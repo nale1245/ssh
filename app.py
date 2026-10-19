@@ -31,9 +31,10 @@ from __future__ import annotations
 
 import argparse
 import os
+from pathlib import Path
 
 import pymysql
-from flask import Flask, g, jsonify, request
+from flask import Flask, g, jsonify, request, send_file
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 
@@ -342,6 +343,18 @@ def api_schools():
 def api_health():
     query_all("SELECT 1")
     return ok({"status": "ok", "database": db_settings()["database"]})
+
+
+# --------------------------------------------------------------------------- #
+# 前端大屏（阶段 4）
+# --------------------------------------------------------------------------- #
+DASHBOARD_FILE = Path(__file__).resolve().parent / "dashboard.html"
+
+
+@app.get("/")
+def index():
+    """直接打开 http://127.0.0.1:5000/ 即可访问大屏（同源，无跨域问题）。"""
+    return send_file(str(DASHBOARD_FILE))
 
 
 def main(argv=None) -> int:
