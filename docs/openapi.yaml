@@ -1,0 +1,218 @@
+openapi: 3.0.0
+info:
+  title: 全国大学数据分析 API
+  version: "1.1"
+  description: |
+    全国大学数据分析大屏后端接口（Flask + MySQL 5.7）。
+    统一响应结构：{ "code": 0, "data": ..., "message": "ok" }
+    code=0 成功，1001 参数缺失/非法，1002 数据不存在，5000 服务器内部错误。
+
+    说明：
+    - rank 为 1000 表示软科「500+」档位（哨兵值），展示层请转成「500+」。
+    - year 参数可省略，默认取数据库里最新年份（2026）。
+servers:
+  - url: http://127.0.0.1:5000
+    description: 本地开发
+paths:
+  /api/map_data:
+    get:
+      summary: 各省学校数量与层次分布（地图着色）
+      parameters:
+        - name: year
+          in: query
+          required: false
+          schema: { type: integer, default: 2026 }
+          description: 年份，缺省取最新年份
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer, example: 0 }
+                  message: { type: string, example: ok }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        province: { type: string, example: 江苏 }
+                        total: { type: integer, example: 39 }
+                        is985: { type: integer, example: 2 }
+                        is211: { type: integer, example: 11 }
+  /api/trend:
+    get:
+      summary: 某校历年排名趋势
+      parameters:
+        - name: school
+          in: query
+          required: true
+          schema: { type: string, example: 清华大学 }
+          description: 学校名（精确优先，找不到时按模糊匹配）
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer, example: 0 }
+                  message: { type: string, example: ok }
+                  data:
+                    type: object
+                    properties:
+                      years: { type: array, items: { type: integer }, example: [2021, 2022, 2023, 2024, 2025, 2026] }
+                      ranks: { type: array, items: { type: integer }, example: [1, 1, 1, 1, 1, 1] }
+                      scores: { type: array, items: { type: number }, example: [969.2, 999.4, 1004.1, 992.6, 1076.1, 1087.1] }
+  /api/province:
+    get:
+      summary: 省内大学列表与层次统计
+      parameters:
+        - name: province
+          in: query
+          required: true
+          schema: { type: string, example: 广东 }
+        - name: year
+          in: query
+          required: false
+          schema: { type: integer, default: 2026 }
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  data:
+                    type: object
+                    properties:
+                      year: { type: integer, example: 2026 }
+                      levelStats:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            level: { type: string, example: 985 }
+                            count: { type: integer, example: 2 }
+                      schools:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name: { type: string }
+                            level: { type: string }
+                            rank: { type: integer }
+                            rankDisplay: { type: string, example: "1" }
+                            score: { type: number }
+  /api/correlation:
+    get:
+      summary: 科研 vs 人才培养散点数据
+      parameters:
+        - name: year
+          in: query
+          required: false
+          schema: { type: integer, default: 2026 }
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: { type: string }
+                        research: { type: number }
+                        talent: { type: number }
+  /api/heatmap:
+    get:
+      summary: 年份×省份招生人次热力图
+      parameters:
+        - name: year
+          in: query
+          required: false
+          schema: { type: integer }
+          description: 可选，只返回某一年
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  data:
+                    type: object
+                    properties:
+                      years: { type: array, items: { type: integer } }
+                      provinces: { type: array, items: { type: string } }
+                      values:
+                        type: array
+                        description: ECharts heatmap 数据，[省份下标, 年份下标, 人次]
+                        items:
+                          type: array
+                          items: { type: number }
+                      hasData:
+                        type: boolean
+                        description: admission 表暂无数据时为 false（阶段 5 爬取后变 true）
+  /api/schools:
+    get:
+      summary: 学校列表（搜索/筛选）
+      parameters:
+        - name: keyword
+          in: query
+          required: false
+          schema: { type: string, example: 清华 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 50, maximum: 500 }
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer, example: 1 }
+                        name: { type: string, example: 清华大学 }
+  /api/health:
+    get:
+      summary: 健康检查（辅助接口，不在 6 个业务接口内）
+      responses:
+        "200":
+          description: 数据库连通
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer, example: 0 }
+                  message: { type: string }
+                  data:
+                    type: object
+                    properties:
+                      status: { type: string, example: ok }
+                      database: { type: string, example: university }
