@@ -73,7 +73,6 @@ CSV_FIELDS = [
     "univ_name_en",    # 学校名（英文）
     "univ_slug",       # 学校唯一标识（软科 univUp，用于跨年关联）
     "province",        # 省份
-    "city",            # 城市（软科不提供，阶段 2 补充，本阶段留空）
     "univ_type",       # 类型（综合/理工/师范/农业/林业）
     "level",           # 层次标签（985/211/双一流，多个用 / 连接）
     "is_985",          # 是否 985（0/1）
@@ -287,7 +286,6 @@ def parse_year(payload: dict, year: int) -> list[dict]:
             "univ_name_en": (item.get("univNameEn") or "").strip(),
             "univ_slug": (item.get("univUp") or "").strip(),
             "province": (item.get("province") or "").strip(),
-            "city": "",  # 软科接口/详情页均不提供城市，阶段 2 统一补充
             "univ_type": (item.get("univCategory") or "").strip(),
             "level": level,
             "is_985": int("985" in tags),
@@ -347,7 +345,6 @@ def verify(rows: list[dict], years: list[int]) -> bool:
       - 必需字段 year/rank/univ_name/univ_slug/province/univ_type：要求 100% 非空；
       - 总分 score_total：只在「有具体名次」的学校上要求 100%（软科对 500+ 学校不发布分数）；
       - 科研/人才培养/社会服务：软科只发布前 100 名的分项，覆盖率仅作提示，不计失败；
-      - 城市 city：软科接口与详情页均不提供，本阶段留空，作为已知缺口提示。
     """
     logger.info("=" * 62)
     logger.info("自检开始")
@@ -397,11 +394,7 @@ def verify(rows: list[dict], years: list[int]) -> bool:
         logger.info("ℹ️  字段 %-14s 覆盖率 %.2f%%（软科仅发布前 100 名分项，正常）",
                     field, completeness[field] * 100)
 
-    # 6) 城市：软科不提供，已知缺口
-    logger.info("⚠️  字段 city         非空率 %.2f%%（软科无城市字段，阶段 2 补充）",
-                completeness["city"] * 100)
-
-    # 7) 中文乱码检测（UTF-8 解码失败的替换字符）
+    # 6) 中文乱码检测（UTF-8 解码失败的替换字符）
     bad = [r for r in rows if "\ufffd" in str(r.get("univ_name", ""))]
     if bad:
         logger.error("❌ 检测到 %d 条疑似乱码记录", len(bad))
@@ -441,7 +434,6 @@ def save_meta(rows: list[dict], years: list[int], elapsed: float, path: Path) ->
         "elapsed_seconds": round(elapsed, 2),
         "field_completeness": completeness_report(rows),
         "notes": {
-            "city": "软科排名接口与学校详情页均不提供城市，本阶段留空，阶段 2 统一补全",
             "stars": "软科主榜不发布星级，按排名分段映射（1-10=>5, 11-50=>4, 51-200=>3, 201-500=>2, 500+=>1）",
             "rank": "保留原始值，含 '500+' 这种区间写法，阶段 2 清洗为整数",
             "sub_scores": "科研/人才培养/社会服务分项软科仅发布前 100 名，排名 100 之后的学校该三列为空",

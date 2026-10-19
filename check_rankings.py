@@ -24,7 +24,7 @@ DEFAULT_CSV = PROJECT_ROOT / "data" / "rankings_raw.csv"
 EXPECTED_YEARS = [2021, 2022, 2023, 2024, 2025, 2026]
 REQUIRED_FIELDS = ["year", "rank", "univ_name", "univ_slug", "province", "univ_type"]
 TEXT_FIELDS = ["univ_name", "univ_name_en", "province", "univ_type", "level"]
-OPTIONAL_FIELDS = {"city", "score_research", "score_talent", "score_social", "level",
+OPTIONAL_FIELDS = {"score_research", "score_talent", "score_social", "level",
                    "score_total"}  # score_total 对 500+ 学校天然为空，行级完整性单列检查
 REPLACEMENT_CHAR = "\ufffd"
 
