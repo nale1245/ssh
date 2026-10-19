@@ -100,6 +100,11 @@ def main(argv=None) -> int:
                   len(canvases) >= 2 and all(w > 300 for w in sizes),
                   "%d 个 canvas，宽度 %s" % (len(canvases), [round(w) for w in sizes]))
 
+        # 2.5) 健康状态灯
+        health_class = page.locator("#healthStatus").get_attribute("class") or ""
+        res.check("页脚显示服务正常", "ok" in health_class,
+                  page.locator("#healthText").inner_text())
+
         # 3) KPI
         kpi = {k: page.locator("#" + k).inner_text().strip()
                for k in ["kpiTotal", "kpi985", "kpi211", "kpiProv"]}
