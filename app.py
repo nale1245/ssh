@@ -347,6 +347,72 @@ def api_schools():
 
 
 # --------------------------------------------------------------------------- #
+# 辅助：专业招生人数（热力图框选联动用）
+# --------------------------------------------------------------------------- #
+def parse_csv_arg(name: str) -> list[str]:
+    raw = (request.args.get(name) or "").strip()
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+@app.get("/api/majors")
+def api_majors():
+    """
+    按省份/年份筛选招生专业（阶段 5 热力图框选联动）。
+
+    参数（均可选，逗号分隔多值）：
+        province=广东,广西
+        year=2023,2024
+        limit=20
+    返回：{rows:[{major,total,schools,provinces,years}], hasData}
+    """
+    provinces = parse_csv_arg("province")
+    year_values = parse_csv_arg("year")
+    try:
+        limit = max(1, min(int(request.args.get("limit", "20")), 100))
+    except ValueError:
+        raise ApiError(1001, "参数 limit 必须为整数")
+
+    where = []
+    params: list = []
+    if provinces:
+        where.append("province IN (%s)" % ",".join(["%s"] * len(provinces)))
+        params.extend(provinces)
+    if year_values:
+        try:
+            years = [int(y) for y in year_values]
+        except ValueError:
+            raise ApiError(1001, "参数 year 必须为整数")
+        where.append("year IN (%s)" % ",".join(["%s"] * len(years)))
+        params.extend(years)
+
+    sql = (
+        "SELECT major, SUM(`count`) AS total, COUNT(DISTINCT univ_id) AS schools, "
+        "       COUNT(DISTINCT province) AS provinces, COUNT(DISTINCT year) AS years "
+        "FROM admission "
+    )
+    if where:
+        sql += "WHERE " + " AND ".join(where) + " "
+    sql += "GROUP BY major ORDER BY total DESC, major LIMIT %s"
+    params.append(limit)
+
+    rows = query_all(sql, tuple(params))
+    return ok({
+        "filters": {"provinces": provinces, "years": [int(y) for y in year_values] if year_values else []},
+        "rows": [
+            {
+                "major": r["major"],
+                "total": int(r["total"] or 0),
+                "schools": int(r["schools"] or 0),
+                "provinces": int(r["provinces"] or 0),
+                "years": int(r["years"] or 0),
+            }
+            for r in rows
+        ],
+        "hasData": bool(rows),
+    })
+
+
+# --------------------------------------------------------------------------- #
 # 健康检查（辅助，不在 6 个业务接口内）
 # --------------------------------------------------------------------------- #
 @app.get("/api/health")

@@ -9,6 +9,12 @@ venv/
 logs/
 data/raw_json/
 data/crawl_meta.json
+data/admission_school_map.json
+
+# 临时探测脚本
+_probe/
+_probe_admission/
+_tmp_*
 
 # 编辑器 / 系统
 .vscode/
