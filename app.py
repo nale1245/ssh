@@ -18,24 +18,31 @@ app.py —— 阶段 3：Flask 后端 API（设计文档 v2 §4，API-01 ~ API-0
     GET /api/schools       学校列表（搜索/筛选）
 额外：GET /api/health     健康检查（数据库连通性），便于联调与自检
 
-数据库：MySQL 5.7（库 university），连接信息从参数或环境变量读取：
-    MYSQL_HOST / MYSQL_PORT / MYSQL_USER / MYSQL_PASSWORD / MYSQL_DATABASE
-    密码不写死、不给默认值；未配置时接口返回 code=5000 并提示。
+数据库：MySQL 5.7（库 university），账号密码在 config.py 中（按使用要求内置）。
+也可用环境变量 MYSQL_HOST / MYSQL_PORT / MYSQL_USER / MYSQL_PASSWORD / MYSQL_DATABASE 覆盖。
 
-启动：
-    $env:MYSQL_PASSWORD="******"; python app.py
-    python app.py --port 5000 --db-user root
+启动（最简单）：
+    python app.py            # 直接启动，浏览器打开 http://127.0.0.1:5000/
+    python app.py --open     # 启动后自动打开浏览器
+    start.bat                # Windows 双击启动（等价于 python app.py --open）
 """
 
 from __future__ import annotations
 
 import argparse
 import os
+import socket
+import threading
+import time
+import webbrowser
+from pathlib import Path
 
 import pymysql
-from flask import Flask, g, jsonify, request
+from flask import Flask, g, jsonify, request, send_file
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
+
+from config import APP_HOST, APP_PORT, DB_CONFIG
 
 app = Flask(__name__)
 app.json.ensure_ascii = False  # 中文直接输出，不转 \uXXXX
@@ -70,26 +77,30 @@ def handle_http_exception(err: HTTPException):
     }), err.code
 
 
+@app.errorhandler(pymysql.MySQLError)
+def handle_db_error(err: pymysql.MySQLError):
+    """数据库错误统一转成可读 JSON，避免浏览器只看到 500。"""
+    app.logger.error("数据库错误：%s", err)
+    detail = str(err).split("\n")[0][:160]
+    return jsonify({
+        "code": 5000,
+        "data": None,
+        "message": "数据库连接或查询失败：%s。请确认 MySQL 服务已启动，且 config.py 中的账号密码正确。" % detail,
+    }), 200
+
+
 @app.errorhandler(Exception)
 def handle_unexpected(err: Exception):
     app.logger.exception("未处理异常：%s", err)
-    return jsonify({"code": 5000, "data": None, "message": "服务器内部错误"}), 500
+    return jsonify({"code": 5000, "data": None, "message": "服务器内部错误：%s" % str(err)[:160]}), 500
 
 
 # --------------------------------------------------------------------------- #
 # 数据库
 # --------------------------------------------------------------------------- #
 def db_settings() -> dict:
-    password = os.environ.get("MYSQL_PASSWORD")
-    if password is None:
-        raise ApiError(5000, "未配置数据库密码：请设置环境变量 MYSQL_PASSWORD 后重启服务")
-    return {
-        "host": os.environ.get("MYSQL_HOST", "127.0.0.1"),
-        "port": int(os.environ.get("MYSQL_PORT", "3306")),
-        "user": os.environ.get("MYSQL_USER", "root"),
-        "password": password,
-        "database": os.environ.get("MYSQL_DATABASE", "university"),
-    }
+    """账号密码来自 config.py，可用环境变量或命令行参数覆盖。"""
+    return dict(DB_CONFIG)
 
 
 def get_db():
@@ -344,38 +355,93 @@ def api_health():
     return ok({"status": "ok", "database": db_settings()["database"]})
 
 
+# --------------------------------------------------------------------------- #
+# 前端大屏（阶段 4）
+# --------------------------------------------------------------------------- #
+DASHBOARD_FILE = Path(__file__).resolve().parent / "dashboard.html"
+
+
+@app.get("/")
+def index():
+    """直接打开 http://127.0.0.1:5000/ 即可访问大屏（同源，无跨域问题）。"""
+    return send_file(str(DASHBOARD_FILE))
+
+
+def check_database() -> tuple[bool, str]:
+    """启动时做一次数据库连通性检查，给人话提示而不是等接口 500。"""
+    try:
+        conn = pymysql.connect(**db_settings(), charset="utf8mb4", connect_timeout=3)
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM university")
+                count = cur.fetchone()[0]
+            return True, "university 表 %d 行" % count
+        finally:
+            conn.close()
+    except pymysql.MySQLError as exc:
+        return False, str(exc).split("\n")[0][:160]
+
+
+def port_in_use(host: str, port: int) -> bool:
+    """判断端口是否已有服务在监听（用于给出「已有实例在运行」的友好提示）。"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.4)
+        return sock.connect_ex((host, port)) == 0
+
+
+def open_browser_later(url: str, delay: float = 1.2) -> None:
+    def _open():
+        time.sleep(delay)
+        webbrowser.open(url)
+
+    threading.Thread(target=_open, daemon=True).start()
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="全国大学数据分析大屏 · Flask API")
-    parser.add_argument("--host", default=os.environ.get("FLASK_HOST", "127.0.0.1"))
-    parser.add_argument("--port", type=int, default=int(os.environ.get("FLASK_PORT", "5000")))
+    parser.add_argument("--host", default=APP_HOST)
+    parser.add_argument("--port", type=int, default=APP_PORT)
     parser.add_argument("--db-host", default=None)
     parser.add_argument("--db-port", type=int, default=None)
     parser.add_argument("--db-user", default=None)
     parser.add_argument("--db-password", default=None)
+    parser.add_argument("--open", dest="open_browser", action="store_true",
+                        help="启动后自动打开浏览器")
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args(argv)
 
-    # 允许命令行覆盖环境变量（密码仅用于本进程，不落盘）
+    # 命令行参数优先于 config.py
     if args.db_host:
-        os.environ["MYSQL_HOST"] = args.db_host
+        DB_CONFIG["host"] = args.db_host
     if args.db_port:
-        os.environ["MYSQL_PORT"] = str(args.db_port)
+        DB_CONFIG["port"] = args.db_port
     if args.db_user:
-        os.environ["MYSQL_USER"] = args.db_user
-    if args.db_password:
-        os.environ["MYSQL_PASSWORD"] = args.db_password
+        DB_CONFIG["user"] = args.db_user
+    if args.db_password is not None:
+        DB_CONFIG["password"] = args.db_password
 
-    if not os.environ.get("MYSQL_PASSWORD"):
-        print("❌ 未配置数据库密码：请设置 MYSQL_PASSWORD 或使用 --db-password")
-        return 2
+    db_ok, db_detail = check_database()
+    print("=" * 64)
+    print("  全国大学数据分析大屏 · 后端服务")
+    print("  访问地址 : http://%s:%d/" % (args.host, args.port))
+    print("  数据库   : %s@%s:%s/%s" % (
+        DB_CONFIG["user"], DB_CONFIG["host"], DB_CONFIG["port"], DB_CONFIG["database"]))
+    if db_ok:
+        print("  连接状态 : [OK] 已连接（%s）" % db_detail)
+    else:
+        print("  连接状态 : [FAIL] 连接失败：%s" % db_detail)
+        print("  处理建议 : 启动 MySQL 服务，或修改 config.py 中的账号密码后重试")
+    print("=" * 64)
 
-    print("全国大学数据分析 API 启动：http://%s:%d" % (args.host, args.port))
-    print("数据库：%s@%s:%s/%s" % (
-        os.environ.get("MYSQL_USER", "root"),
-        os.environ.get("MYSQL_HOST", "127.0.0.1"),
-        os.environ.get("MYSQL_PORT", "3306"),
-        os.environ.get("MYSQL_DATABASE", "university"),
-    ))
+    url = "http://%s:%d/" % (args.host, args.port)
+    if port_in_use(args.host, args.port):
+        print("  端口提示 : 端口 %d 已被占用" % args.port)
+        print("  处理建议 : 大屏可能已经在运行 → 直接打开 %s" % url)
+        print("             如需重启：先关掉旧的 python app.py 窗口，或用 --port 5001 换端口")
+        return 3
+
+    if args.open_browser:
+        open_browser_later(url)
     app.run(host=args.host, port=args.port, debug=args.debug, use_reloader=False)
     return 0
 

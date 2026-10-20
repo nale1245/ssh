@@ -18,18 +18,19 @@
 # 1) 确保 MySQL 5.7 服务已启动（Windows 服务名 MySQL）
 Get-Service MySQL
 
-# 2) 设置数据库密码（不写进代码；不设置时接口返回 code=5000 并提示）
-$env:MYSQL_PASSWORD="你的密码"
-
-# 3) 启动（默认 127.0.0.1:5000）
+# 2) 直接启动（账号密码在 config.py 中，已按使用要求内置）
 python app.py
+# 或双击 start.bat（自动打开浏览器）
 
 # 可选参数
-python app.py --port 5000 --db-user root --db-host 127.0.0.1
+python app.py --port 5000 --db-user root --db-password 其他密码
 ```
 
-环境变量：`MYSQL_HOST` / `MYSQL_PORT` / `MYSQL_USER` / `MYSQL_PASSWORD` / `MYSQL_DATABASE`。
-密码只从环境变量或 `--db-password` 读取，**代码与仓库里没有密码**。
+配置来源：`config.py` 的 `DB_CONFIG`（默认 root / 123456 / university），
+也可用环境变量 `MYSQL_HOST` / `MYSQL_PORT` / `MYSQL_USER` / `MYSQL_PASSWORD` / `MYSQL_DATABASE`
+或命令行参数临时覆盖。
+
+> ⚠️ 明文密码仅用于本机实训；若要推 GitHub，请先改为环境变量并轮换密码。
 
 ## 3. 接口清单与返回样例
 
