@@ -198,6 +198,53 @@ paths:
                       properties:
                         id: { type: integer, example: 1 }
                         name: { type: string, example: 清华大学 }
+  /api/majors:
+    get:
+      summary: 招生专业人数（热力图框选联动）
+      parameters:
+        - name: province
+          in: query
+          required: false
+          schema: { type: string, example: 河南,广西 }
+          description: 省份，逗号分隔多值
+        - name: year
+          in: query
+          required: false
+          schema: { type: string, example: 2023,2024 }
+          description: 年份，逗号分隔多值
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 20, maximum: 100 }
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  data:
+                    type: object
+                    properties:
+                      hasData: { type: boolean }
+                      filters:
+                        type: object
+                        properties:
+                          provinces: { type: array, items: { type: string } }
+                          years: { type: array, items: { type: integer } }
+                      rows:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            major: { type: string, example: 计算机类 }
+                            total: { type: integer, example: 120 }
+                            schools: { type: integer, example: 3 }
+                            provinces: { type: integer, example: 1 }
+                            years: { type: integer, example: 1 }
   /api/health:
     get:
       summary: 健康检查（辅助接口，不在 6 个业务接口内）

@@ -58,7 +58,7 @@ def find_chrome(explicit: str | None) -> str | None:
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="阶段 4 大屏自检")
+    parser = argparse.ArgumentParser(description="阶段 4/5 大屏自检")
     parser.add_argument("--base", default="http://127.0.0.1:5000")
     parser.add_argument("--chrome", default=None)
     args = parser.parse_args(argv)
@@ -75,7 +75,7 @@ def main(argv=None) -> int:
     page_errors: list[str] = []
 
     print("=" * 70)
-    print("阶段 4 大屏自检：%s" % args.base)
+    print("阶段 4/5 大屏自检：%s" % args.base)
     print("浏览器：%s" % chrome)
     print("=" * 70)
 
@@ -96,8 +96,8 @@ def main(argv=None) -> int:
         # 2) canvas
         canvases = page.locator("canvas").all()
         sizes = [(c.bounding_box() or {}).get("width", 0) for c in canvases]
-        res.check("地图 + 折线 canvas 均渲染",
-                  len(canvases) >= 2 and all(w > 300 for w in sizes),
+        res.check("地图/趋势/饼图/热力图 canvas 均渲染",
+                  len(canvases) >= 4 and all(w > 200 for w in sizes),
                   "%d 个 canvas，宽度 %s" % (len(canvases), [round(w) for w in sizes]))
 
         # 2.5) 健康状态灯
@@ -128,15 +128,37 @@ def main(argv=None) -> int:
         )
         res.check("搜索换校后趋势标题切换", "浙江大学" in page.locator("#trendPanel h2").inner_text())
 
-        # 6) 地图点击联动提示
+        # 6) 地图点击联动提示 + 省份下钻
         map_box = page.locator("#mapChart").bounding_box()
         if map_box:
             page.mouse.click(map_box["x"] + map_box["width"] * 0.52,
                              map_box["y"] + map_box["height"] * 0.55)
-            page.wait_for_timeout(600)
+            page.wait_for_timeout(900)
             res.check("点击省份弹出提示",
                       "show" in (page.locator("#toast").get_attribute("class") or ""),
                       page.locator("#toast").inner_text())
+            province_title = page.locator("#provinceTitle").inner_text()
+            res.check("点击省份加载省内详情", "省份详情 ·" in province_title, province_title)
+            res.check("省内学校列表非空",
+                      page.locator("#schoolList .school-item").count() > 0,
+                      "%d 所" % page.locator("#schoolList .school-item").count())
+
+        # 6.5) 热力图 / 专业表格 + 框选联动
+        res.check("招生热力图已渲染", page.locator("#heatmapChart canvas").count() > 0)
+        res.check("专业招生表格存在",
+                  page.locator("#majorsBody tr").count() >= 1,
+                  page.locator("#majorsBody").inner_text()[:30])
+
+        hm_box = page.locator("#heatmapChart").bounding_box()
+        if hm_box:
+            page.mouse.move(hm_box["x"] + 70, hm_box["y"] + 60)
+            page.mouse.down()
+            page.mouse.move(hm_box["x"] + hm_box["width"] - 50,
+                            hm_box["y"] + hm_box["height"] - 45, steps=15)
+            page.mouse.up()
+            page.wait_for_timeout(1400)
+            majors_meta = page.locator("#majorsMeta").inner_text()
+            res.check("框选热力图联动专业表格", "框选" in majors_meta, majors_meta)
 
         # 7) 截图
         SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
@@ -148,7 +170,7 @@ def main(argv=None) -> int:
 
     print("=" * 70)
     print("通过 %d 项，失败 %d 项" % (res.ok, res.bad))
-    print("结论：%s" % ("✅ 阶段 4 大屏自检通过" if res.bad == 0 else "❌ 存在失败项"))
+    print("结论：%s" % ("✅ 阶段 4/5 大屏自检通过" if res.bad == 0 else "❌ 存在失败项"))
     print("=" * 70)
     return 0 if res.bad == 0 else 1
 

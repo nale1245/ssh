@@ -157,8 +157,15 @@ def main(argv=None) -> int:
         c.check("[heatmap] 31 个省份", len(d["provinces"]) == 31,
                 "%d 个" % len(d["provinces"]))
         c.check("[heatmap] values 为列表", isinstance(d["values"], list))
-        c.check("[heatmap] 当前无招生数据 hasData=false", d["hasData"] is False,
-                "阶段 5 爬取后应变 true")
+        if d["hasData"]:
+            c.check("[heatmap] 有数据时 values 非空", len(d["values"]) > 0,
+                    "%d 个格子" % len(d["values"]))
+            c.check("[heatmap] 坐标下标在范围内",
+                    all(0 <= v[0] < len(d["provinces"]) and 0 <= v[1] < len(d["years"])
+                        for v in d["values"]))
+        else:
+            c.check("[heatmap] 无数据时 hasData=false 且 values 为空",
+                    d["values"] == [], "阶段 5 爬取导入后应变为 true")
     else:
         c.check("[heatmap] code=0", False)
 
@@ -173,6 +180,14 @@ def main(argv=None) -> int:
     if body and body["code"] == 0:
         c.check("[schools 无参] 默认 50 条", len(body["data"]) == 50,
                 "%d 条" % len(body["data"]))
+
+    # 6.5) 辅助接口：专业招生
+    body = envelope(c.get("/api/majors", province="河南", year=2024), c, "[majors]")
+    if body and body["code"] == 0:
+        c.check("[majors] rows 为列表", isinstance(body["data"]["rows"], list))
+        has_data = body["data"]["hasData"]
+        c.check("[majors] rows 与 hasData 一致",
+                (len(body["data"]["rows"]) > 0) == has_data)
 
     # 7) 参数校验：year 非法
     body = envelope(c.get("/api/map_data", year="abc"), c, "[year=abc]")
