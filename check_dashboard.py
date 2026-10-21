@@ -160,6 +160,22 @@ def main(argv=None) -> int:
             majors_meta = page.locator("#majorsMeta").inner_text()
             res.check("框选热力图联动专业表格", "框选" in majors_meta, majors_meta)
 
+        # 6.8) 热力图分页 + 详情页
+        pager = page.locator("#heatPageLabel").inner_text()
+        res.check("热力图分页标示", "/" in pager, pager)
+        page.click("#detailBtn")
+        page.wait_for_timeout(1800)
+        res.check("详情页打开", "show" in (page.locator("#detailPage").get_attribute("class") or ""))
+        res.check("详情页默认年份", page.locator("#dYear").input_value() != "",
+                  page.locator("#dYear").input_value())
+        res.check("详情页默认省份", page.locator("#dProvince").input_value() != "",
+                  page.locator("#dProvince").input_value())
+        res.check("详情页标签存在", page.locator("#detailTabs button").count() >= 1,
+                  str(page.locator("#detailTabs button").all_inner_texts()))
+        page.click("#detailBack")
+        page.wait_for_timeout(900)
+        res.check("详情页返回总览", "show" not in (page.locator("#detailPage").get_attribute("class") or ""))
+
         # 7) 截图
         SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
         shot = SCREENSHOT_DIR / "p0_check.png"
