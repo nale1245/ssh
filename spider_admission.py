@@ -59,7 +59,23 @@ PROVINCE_NAME = {
     "46": "海南", "50": "重庆", "51": "四川", "52": "贵州", "53": "云南",
     "54": "西藏", "61": "陕西", "62": "甘肃", "63": "青海", "64": "宁夏", "65": "新疆",
 }
-NEW_GAOKAO = {"11", "12", "31", "33", "37", "46"}
+# 3+3 新高考省份：综合（type=3）
+NEW_GAOKAO_33 = {"11", "12", "31", "33", "37", "46"}
+# 3+1+2 新高考省份：物理类/历史类（接口用 2073/2074）
+NEW_GAOKAO_312 = {
+    "13", "21", "32", "35", "42", "43", "44", "50",
+    "14", "15", "22", "23", "34", "36", "41", "45",
+    "52", "53", "54", "61", "62", "63", "64", "65",
+}
+
+
+def type_candidates(province: str, year: int) -> list[int]:
+    """返回该省份该年份值得尝试的科类 ID，按优先级排列。"""
+    if province in NEW_GAOKAO_33:
+        return [3, 1, 2]
+    if province in NEW_GAOKAO_312:
+        return [2073, 2074, 3, 1, 2]
+    return [1, 2, 3, 2073, 2074]
 
 CSV_FIELDS = ["univ_slug", "univ_name", "school_id", "year", "province",
               "local_type", "major", "batch", "count", "tuition"]
@@ -80,32 +96,77 @@ def setup_logging() -> None:
     logger.addHandler(fh)
 
 
-def get_json(params: dict, retries: int = 1):
+def get_json(params: dict, retries: int = 3):
     last = None
     for attempt in range(retries + 1):
         try:
-            resp = requests.get(API, params=params, headers=HEADERS, timeout=15)
+            resp = requests.get(API, params=params, headers=HEADERS, timeout=20)
             resp.raise_for_status()
-            return resp.json()
+            data = resp.json()
+            if isinstance(data, dict) and data.get("code") == "1069":
+                wait = 120 + attempt * 120
+                logger.warning("触发接口限流，等待 %d 秒后重试", wait)
+                time.sleep(wait)
+                continue
+            return data
         except Exception as exc:  # noqa: BLE001
             last = exc
             if attempt < retries:
-                time.sleep(2)
+                time.sleep(5 + attempt * 5)
     logger.warning("请求失败：%s（%s）", params.get("uri"), last)
     return None
 
 
-def load_schools(limit: int) -> list[tuple[str, str]]:
+PROVINCE_ID = {name: pid for pid, name in PROVINCE_NAME.items()}
+
+
+def load_schools(limit: int, selection: str = "first", rank_year: int = 2024,
+                 top_per_province: int = 10) -> list[dict]:
+    """读取学校名单。
+
+    selection=first：按 clean_rankings 出现顺序取前 limit 所（旧行为）
+    selection=top-per-province：按指定年份排名，取每个省前 N 所
+    """
     if not RANK_CSV.exists():
         raise SystemExit("❌ 找不到 %s，请先执行 python load_data.py" % RANK_CSV)
+
+    if selection == "top-per-province":
+        grouped: dict[str, list[dict]] = {}
+        with RANK_CSV.open("r", encoding="utf-8-sig", newline="") as fh:
+            for row in csv.DictReader(fh):
+                if row.get("year") != str(rank_year):
+                    continue
+                rank = row.get("rank", "")
+                if not rank.isdigit():
+                    continue
+                name = row.get("univ_name", "").strip()
+                province = row.get("province", "").strip()
+                if not name or not province:
+                    continue
+                grouped.setdefault(province, []).append({
+                    "slug": row.get("univ_slug", "").strip(),
+                    "name": name,
+                    "province": province,
+                    "rank": int(rank),
+                })
+        picked: list[dict] = []
+        for items in grouped.values():
+            items.sort(key=lambda item: item["rank"])
+            picked.extend(items[:top_per_province])
+        picked.sort(key=lambda item: item["rank"])
+        if limit:
+            picked = picked[:limit]
+        return picked
+
     schools, seen = [], set()
     with RANK_CSV.open("r", encoding="utf-8-sig", newline="") as fh:
         for row in csv.DictReader(fh):
             name = row.get("univ_name", "").strip()
             slug = row.get("univ_slug", "").strip()
+            province = row.get("province", "").strip()
             if name and name not in seen:
                 seen.add(name)
-                schools.append((slug, name))
+                schools.append({"slug": slug, "name": name, "province": province})
     return schools[:limit]
 
 
@@ -115,8 +176,10 @@ def find_school_id(name: str, cache: dict, rate: float) -> int | None:
     data = get_json({"keyword": name, "page": 1, "size": 10, "request_type": 1,
                      "uri": "apidata/api/gk/school/lists"})
     sid = None
-    for item in (data or {}).get("data", {}).get("item", []) or []:
-        if item.get("name") == name:
+    payload = (data or {}).get("data")
+    items = payload.get("item", []) if isinstance(payload, dict) else []
+    for item in items or []:
+        if isinstance(item, dict) and item.get("name") == name:
             sid = int(item["school_id"])
             break
     cache[name] = sid
@@ -133,7 +196,10 @@ def fetch_plan(school_id: int, province: str, type_id: int, year: int,
             "local_type_id": type_id, "year": year, "page": page,
             "size": 20, "uri": "apidata/api/gkv3/plan/school",
         })
-        payload = (data or {}).get("data") or {}
+        payload = (data or {}).get("data")
+        if not isinstance(payload, dict):
+            logger.warning("接口返回异常数据（%s），跳过该组合", type(payload).__name__)
+            break
         items = payload.get("item") or []
         if (data or {}).get("code") != "0000" or not items:
             break
@@ -157,7 +223,13 @@ def load_done(out_path: Path) -> set[tuple[str, str, str, str]]:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="掌上高考招生计划采集")
-    parser.add_argument("--limit", type=int, default=20, help="学校数（按 2021 名次）")
+    parser.add_argument("--limit", type=int, default=20, help="学校数上限（0 表示不限）")
+    parser.add_argument("--selection", choices=["first", "top-per-province"], default="first",
+                        help="学校选择方式：first=按 CSV 顺序；top-per-province=每省前 N 所")
+    parser.add_argument("--rank-year", type=int, default=2024, help="按哪一年排名选校")
+    parser.add_argument("--top-per-province", type=int, default=10, help="每省取前几所")
+    parser.add_argument("--local", action="store_true",
+                        help="只采集学校所在省的招生计划（每校一个省份）")
     parser.add_argument("--provinces", default="41,51,11,37", help="招生省份 ID，逗号分隔")
     parser.add_argument("--years", default="2021,2022,2023,2024")
     parser.add_argument("--types", default="", help="强制类型 ID，逗号分隔；默认按省份自动")
@@ -168,7 +240,7 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     setup_logging()
-    schools = load_schools(args.limit)
+    schools = load_schools(args.limit, args.selection, args.rank_year, args.top_per_province)
     provinces = [p.strip() for p in args.provinces.split(",") if p.strip()]
     years = [int(y) for y in args.years.split(",") if y.strip()]
     forced_types = [int(t) for t in args.types.split(",") if t.strip()]
@@ -190,20 +262,33 @@ def main(argv=None) -> int:
     started = time.time()
     logger.info("开始采集：%d 所学校 x %d 省 x %d 年", len(schools), len(provinces), len(years))
     try:
-        for index, (slug, name) in enumerate(schools, 1):
+        for index, school in enumerate(schools, 1):
+            slug, name = school["slug"], school["name"]
             school_id = find_school_id(name, cache, args.rate)
             if not school_id:
                 logger.warning("[跳过] 未找到学校：%s", name)
                 continue
 
-            for province in provinces:
-                types = forced_types or ([3] if province in NEW_GAOKAO else [1])
+            if args.local:
+                province_ids = [PROVINCE_ID.get(school.get("province", ""), "")]
+                province_ids = [p for p in province_ids if p]
+                if not province_ids:
+                    logger.warning("[跳过] 省份无法识别：%s（%s）", name, school.get("province"))
+                    continue
+            else:
+                province_ids = provinces
+
+            for province in province_ids:
                 for year in years:
+                    types = forced_types or type_candidates(province, year)
                     for type_id in types:
                         key = (slug, str(year), PROVINCE_NAME.get(province, province), str(type_id))
                         if key in done:
                             continue
                         items = fetch_plan(school_id, province, type_id, year, args.rate)
+                        if not items and not forced_types and type_id != types[-1]:
+                            time.sleep(args.rate)
+                            continue
                         for item in items:
                             writer.writerow({
                                 "univ_slug": slug,
@@ -225,6 +310,8 @@ def main(argv=None) -> int:
                         if args.min_rows and total >= args.min_rows and index >= 8:
                             logger.info("已达到 min-rows=%d，提前结束", args.min_rows)
                             raise StopIteration
+                        if items:
+                            break
                         time.sleep(args.rate)
             MAP_JSON.write_text(json.dumps(cache, ensure_ascii=False, indent=1), encoding="utf-8")
     except StopIteration:
