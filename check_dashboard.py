@@ -143,6 +143,16 @@ def main(argv=None) -> int:
                       page.locator("#schoolList .school-item").count() > 0,
                       "%d 所" % page.locator("#schoolList .school-item").count())
 
+        # 6.4) 点击学校行 → 趋势 + 专业招生联动
+        first_school = page.locator("#schoolList .school-item").first
+        if first_school.count() > 0:
+            school_name = first_school.locator(".school-name").inner_text()
+            first_school.click()
+            page.wait_for_timeout(1500)
+            meta = page.locator("#majorsMeta").inner_text()
+            res.check("点击学校联动专业招生", school_name in meta and page.locator("#majorsBody tr").count() > 0,
+                      meta)
+
         # 6.5) 热力图 / 专业表格 + 框选联动
         res.check("招生热力图已渲染", page.locator("#heatmapChart canvas").count() > 0)
         res.check("专业招生表格存在",
