@@ -4,50 +4,159 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
-<title>全国大学数据分析大屏 · P0</title>
+<title>全国大学数据分析大屏 · SuperDesign</title>
+<script>/* 主题预加载：读取 localStorage 设置 data-theme，避免刷新闪烁 */
+(function () {
+  var t = "dark";
+  try { t = localStorage.getItem("ssh-dash-theme") || "dark"; } catch (e) {}
+  if (t === "light") document.documentElement.setAttribute("data-theme", "light");
+})();
+</script>
 <script src="./static/vendor/echarts.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
+  /* ============ 设计令牌 ============
+     深色主题 = 高对比科技风（深夜蓝黑 + 霓虹青/品红）
+     亮色主题 = 高对比科技风（冷白 + 电光蓝/品红）
+  ============ */
   :root {
-    --space-1: 4px; --space-2: 8px; --space-3: 16px; --space-4: 24px; --space-5: 32px;
-    --bg: oklch(0.14 0.03 258);
-    --panel: oklch(0.2 0.04 255 / 0.72);
-    --line: oklch(0.8 0.12 210 / 0.18);
-    --cyan: oklch(0.84 0.13 205);
-    --blue: oklch(0.7 0.16 255);
-    --amber: oklch(0.84 0.14 85);
-    --violet: oklch(0.78 0.11 295);
-    --text: oklch(0.94 0.02 240);
-    --muted: oklch(0.7 0.04 245);
-    --danger: oklch(0.7 0.19 25);
-    --ease: cubic-bezier(0.16, 1, 0.3, 1);
-    --font-display: "Bahnschrift", "Microsoft YaHei UI", "PingFang SC", sans-serif;
-    --font-body: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", sans-serif;
-    --font-mono: "Cascadia Mono", "Consolas", monospace;
+    --space-1: 4px; --space-2: 8px; --space-3: 16px; --space-4: 24px; --space-5: 32px; --space-6: 48px;
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --font-display: "Outfit", "Bahnschrift", "Microsoft YaHei UI", "PingFang SC", sans-serif;
+    --font-body: "Inter", "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    --font-num: "Space Grotesk", "Outfit", "Bahnschrift", "Consolas", monospace;
+    --font-mono: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --theme-transition: 350ms var(--ease);
+
+    /* ============ 深色主题：高对比科技风（霓虹青 × 品红） ============ */
+    --background: oklch(0.095 0.028 268);
+    --foreground: oklch(0.96 0.012 220);
+    --card: oklch(0.135 0.032 266);
+    --card-solid: oklch(0.165 0.036 266);
+    --secondary: oklch(0.20 0.040 264);
+    --muted: oklch(0.24 0.038 264);
+    --muted-foreground: oklch(0.62 0.035 258);
+    --border: oklch(0.28 0.050 258);
+    --border-strong: oklch(0.44 0.075 245);
+    --primary: oklch(0.88 0.16 200);
+    --primary-foreground: oklch(0.12 0.030 264);
+    --pos: oklch(0.86 0.19 165);
+    --neg: oklch(0.70 0.23 15);
+    --shadow-1: 0 1px 2px oklch(0 0 0 / 0.55), 0 10px 26px oklch(0 0 0 / 0.50);
+    --shadow-2: 0 2px 6px oklch(0 0 0 / 0.60), 0 22px 46px oklch(0.05 0.03 268 / 0.65);
+    --grid-line: oklch(0.82 0.10 220 / 0.055);
+
+    /* 深色专属光效：霓虹青 + 品红 */
+    --glow-primary: oklch(0.82 0.16 205 / 0.32);
+    --glow-secondary: oklch(0.70 0.23 330 / 0.22);
+    --header-bg: oklch(0.13 0.032 266 / 0.68);
+    --header-blur: 14px;
+
+    /* ---- 语义化 accent 色（深色·霓虹） ---- */
+    --accent-rank: oklch(0.88 0.16 200);
+    --accent-score: oklch(0.68 0.03 258);
+    --accent-delta-up: oklch(0.86 0.19 165);
+    --accent-delta-down: oklch(0.70 0.23 15);
+    --accent-best: oklch(0.89 0.17 92);
+    --accent-map: oklch(0.78 0.17 240);
+    --accent-trend: oklch(0.88 0.16 200);
+    --accent-province: oklch(0.86 0.19 165);
+    --accent-heat: oklch(0.74 0.24 330);
+    --accent-majors: oklch(0.84 0.17 55);
+
+    /* ---- 深色：logo 渐变 / 金牌 / 选区 ---- */
+    --logo-1: oklch(0.88 0.16 200);
+    --logo-2: oklch(0.70 0.24 330);
+    --medal-gold-1: oklch(0.92 0.17 95);
+    --medal-gold-2: oklch(0.76 0.15 72);
+    --medal-gold-fg: oklch(0.20 0.03 70);
+    --selection-bg: oklch(0.82 0.16 205 / 0.40);
+    --selection-fg: oklch(0.98 0 0);
   }
+
+  /* ============ 亮色主题：高对比科技风（冷白 + 电光蓝 × 品红） ============ */
+  html[data-theme="light"] {
+    --background: oklch(0.965 0.010 245);
+    --foreground: oklch(0.17 0.035 266);
+    --card: oklch(0.990 0.006 245);
+    --card-solid: oklch(0.955 0.012 248);
+    --secondary: oklch(0.935 0.018 250);
+    --muted: oklch(0.915 0.018 250);
+    --muted-foreground: oklch(0.46 0.035 260);
+    --border: oklch(0.875 0.022 252);
+    --border-strong: oklch(0.70 0.070 250);
+    --primary: oklch(0.52 0.21 258);
+    --primary-foreground: oklch(0.985 0.005 240);
+    --pos: oklch(0.55 0.16 165);
+    --neg: oklch(0.57 0.23 15);
+    --shadow-1: 0 1px 2px oklch(0.25 0.04 260 / 0.06), 0 8px 24px oklch(0.25 0.04 260 / 0.07);
+    --shadow-2: 0 2px 6px oklch(0.25 0.04 260 / 0.08), 0 20px 40px oklch(0.30 0.08 255 / 0.12);
+    --grid-line: oklch(0.45 0.06 255 / 0.06);
+
+    /* 亮色专属光效：电光青 + 品红（低饱和，不脏底） */
+    --glow-primary: oklch(0.72 0.15 215 / 0.22);
+    --glow-secondary: oklch(0.62 0.22 330 / 0.14);
+    --header-bg: oklch(0.990 0.006 245 / 0.75);
+    --header-blur: 16px;
+
+    /* ---- 语义化 accent 色（亮色·高饱和） ---- */
+    --accent-rank: oklch(0.52 0.21 258);
+    --accent-score: oklch(0.50 0.03 260);
+    --accent-delta-up: oklch(0.55 0.16 165);
+    --accent-delta-down: oklch(0.57 0.23 15);
+    --accent-best: oklch(0.66 0.16 85);
+    --accent-map: oklch(0.55 0.20 255);
+    --accent-trend: oklch(0.52 0.21 258);
+    --accent-province: oklch(0.55 0.16 165);
+    --accent-heat: oklch(0.52 0.24 330);
+    --accent-majors: oklch(0.62 0.17 55);
+
+    /* ---- 亮色：logo 渐变 / 金牌 / 选区 ---- */
+    --logo-1: oklch(0.58 0.20 250);
+    --logo-2: oklch(0.52 0.24 330);
+    --medal-gold-1: oklch(0.80 0.15 90);
+    --medal-gold-2: oklch(0.64 0.14 68);
+    --medal-gold-fg: oklch(0.99 0.005 90);
+    --selection-bg: oklch(0.72 0.15 215 / 0.35);
+    --selection-fg: oklch(0.17 0.035 266);
+  }
+
   * { box-sizing: border-box; }
+  ::selection { background: var(--selection-bg); color: var(--selection-fg); }
   html, body { height: 100%; }
   body {
     margin: 0;
-    background:
-      radial-gradient(1200px 700px at 18% -10%, oklch(0.35 0.12 260 / 0.35), transparent 62%),
-      radial-gradient(900px 600px at 96% 0%, oklch(0.55 0.12 205 / 0.18), transparent 58%),
-      var(--bg);
-    color: var(--text);
+    background: var(--background);
+    color: var(--foreground);
     font-family: var(--font-body);
     font-size: 14px;
     overflow: hidden;
+    transition:
+      background var(--theme-transition),
+      color var(--theme-transition),
+      border-color var(--theme-transition),
+      box-shadow var(--theme-transition);
   }
+  /* 深色：蓝紫光晕从上往下；亮色：柔暖黄光晕 */
   body::before {
     content: "";
-    position: fixed; inset: 0;
-    background-image:
-      linear-gradient(oklch(0.8 0.12 210 / 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, oklch(0.8 0.12 210 / 0.04) 1px, transparent 1px);
-    background-size: 48px 48px;
-    pointer-events: none;
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 70% 55% at 50% 0%, var(--glow-primary) 0%, transparent 65%),
+      radial-gradient(ellipse 50% 40% at 15% 100%, var(--glow-secondary) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 85% 100%, var(--glow-secondary) 0%, transparent 60%),
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: auto, auto, auto, 48px 48px, 48px 48px;
+    mask-image: radial-gradient(ellipse 90% 80% at 50% 0%, black 20%, transparent 85%);
+    transition: background var(--theme-transition);
   }
   .screen {
-    position: relative;
+    position: relative; z-index: 1;
     height: 100vh;
     min-height: 720px;
     padding: var(--space-3) var(--space-4) var(--space-2);
@@ -56,230 +165,356 @@
     gap: var(--space-3);
   }
   header {
-    position: relative;
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: var(--space-4);
     padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    background: linear-gradient(90deg, oklch(0.2 0.05 255 / 0.9), oklch(0.22 0.05 245 / 0.55));
-    box-shadow: 0 0 32px oklch(0.84 0.13 205 / 0.07) inset;
-  }
-  header::after {
-    content: "";
-    position: absolute; left: var(--space-4); right: var(--space-4); bottom: -1px; height: 1px;
-    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
-    opacity: 0.5;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--header-bg);
+    backdrop-filter: blur(var(--header-blur)) saturate(1.4);
+    -webkit-backdrop-filter: blur(var(--header-blur)) saturate(1.4);
+    box-shadow: var(--shadow-1), inset 0 1px 0 var(--border-strong);
+    animation: fadeIn 600ms ease-out both;
+    transition:
+      background var(--theme-transition),
+      border-color var(--theme-transition),
+      box-shadow var(--theme-transition);
   }
   .brand { display: flex; align-items: center; gap: var(--space-3); }
   .logo {
-    width: 44px; height: 44px; border-radius: 11px;
+    width: 44px; height: 44px; border-radius: 12px;
     display: grid; place-items: center;
-    font-family: var(--font-display);
-    font-size: 21px; font-weight: 700;
-    color: oklch(0.17 0.04 255);
-    background: linear-gradient(135deg, var(--cyan), var(--blue));
-    box-shadow: 0 0 20px oklch(0.84 0.13 205 / 0.45);
+    font-family: var(--font-display); font-size: 21px; font-weight: 800;
+    color: var(--primary-foreground);
+    background: linear-gradient(135deg, var(--logo-1) 0%, var(--logo-2) 100%);
+    box-shadow: var(--shadow-1);
+    transition: background var(--theme-transition);
   }
   h1 {
     margin: 0;
     font-family: var(--font-display);
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: 3px;
-    background: linear-gradient(90deg, oklch(0.97 0.02 220), var(--cyan) 58%, var(--violet));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    font-size: 26px; font-weight: 800; letter-spacing: 2.5px;
+    color: var(--foreground);
   }
-  .brand p { margin: var(--space-1) 0 0; font-size: 12px; color: var(--muted); letter-spacing: 1.2px; }
+  .brand p { margin: var(--space-1) 0 0; font-size: 11.5px; color: var(--muted-foreground); letter-spacing: 1.4px; }
   .kpis { display: flex; gap: var(--space-4); }
-  .kpi { position: relative; text-align: center; min-width: 88px; }
-  .kpi + .kpi::before {
+  .kpi {
+    position: relative; text-align: center; min-width: 92px; padding: 4px 2px;
+    transition: transform 0.2s var(--ease), filter 0.2s var(--ease);
+  }
+  .kpi::before {
+    content: ""; position: absolute; left: 12%; right: 12%; top: -6px; height: 2px;
+    border-radius: 2px; opacity: 0.7;
+    background: linear-gradient(90deg, transparent, var(--kpi-accent, var(--accent-trend)), transparent);
+    transition: opacity 0.2s var(--ease);
+  }
+  .kpi:hover { transform: translateY(-2px); filter: brightness(1.08); }
+  .kpi:hover::before { opacity: 1; }
+  .kpi:hover b { color: var(--kpi-accent, var(--foreground)); }
+  /* ---- 四个 KPI 各配专属 accent ---- */
+  .kpi.total { --kpi-accent: var(--accent-map); }
+  .kpi.l985  { --kpi-accent: var(--accent-best); }
+  .kpi.l211  { --kpi-accent: var(--accent-province); }
+  .kpi.prov  { --kpi-accent: var(--accent-heat); }
+  .kpi + .kpi::after {
     content: ""; position: absolute; left: calc(var(--space-4) / -2); top: 4px; bottom: 4px; width: 1px;
-    background: linear-gradient(180deg, transparent, oklch(0.8 0.12 210 / 0.25), transparent);
+    background: linear-gradient(180deg, transparent, var(--border-strong), transparent);
   }
   .kpi b {
     display: block;
-    font-family: var(--font-display);
-    font-size: 28px; line-height: 1.1;
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-    text-shadow: 0 0 16px oklch(0.84 0.13 205 / 0.25);
+    font-family: var(--font-num);
+    font-size: 30px; line-height: 1.1;
+    font-variant-numeric: tabular-nums; font-weight: 700;
+    color: var(--foreground);
+    transition: color 0.25s var(--ease);
   }
-  .kpi.total b { color: var(--cyan); }
-  .kpi.l985 b { color: var(--amber); }
-  .kpi.l211 b { color: var(--blue); }
-  .kpi.prov b { color: var(--violet); }
-  .kpi span { font-size: 12px; color: var(--muted); letter-spacing: 1px; }
+  .kpi span { font-size: 11.5px; color: var(--muted-foreground); letter-spacing: 1px; }
   .controls { display: flex; justify-content: flex-end; align-items: center; gap: var(--space-2); }
-  .controls label { font-size: 13px; color: var(--muted); }
+  .controls label { font-size: 12.5px; color: var(--muted-foreground); letter-spacing: 0.6px; }
   select, input, button {
     font-family: inherit;
     font-size: 13px;
-    color: var(--text);
-    background: oklch(0.22 0.04 250 / 0.85);
-    border: 1px solid oklch(0.8 0.12 210 / 0.3);
-    border-radius: 8px;
+    color: var(--foreground);
+    background: var(--secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
     outline: none;
-    transition: border-color 0.16s var(--ease), box-shadow 0.2s var(--ease), background 0.2s var(--ease);
+    transition: border-color 0.16s var(--ease), box-shadow 0.2s var(--ease), background var(--theme-transition), transform 0.15s var(--ease), color var(--theme-transition);
   }
   select { padding: var(--space-2) 12px; cursor: pointer; }
-  button { padding: var(--space-2) 16px; cursor: pointer; background: oklch(0.28 0.05 220 / 0.55); }
-  button:hover { border-color: var(--cyan); box-shadow: 0 0 14px oklch(0.84 0.13 205 / 0.22); }
-  button:active { transform: translateY(1px); }
+  button { padding: var(--space-2) 16px; cursor: pointer; font-weight: 600; }
+  button:hover { border-color: var(--border-strong); box-shadow: 0 0 0 1px var(--border-strong); transform: translateY(-1px); }
+  button:active { transform: translateY(1px) scale(0.98); }
   button.primary {
-    color: oklch(0.17 0.04 255);
-    font-weight: 600;
-    background: linear-gradient(135deg, var(--cyan), oklch(0.78 0.12 225));
+    color: var(--primary-foreground);
+    background: var(--primary);
     border-color: transparent;
+    font-weight: 700;
   }
-  button.primary:hover { box-shadow: 0 0 18px oklch(0.84 0.13 205 / 0.4); }
+  button.primary:hover { box-shadow: 0 0 0 2px var(--border-strong); }
   select:focus-visible, input:focus-visible, button:focus-visible {
-    outline: 2px solid var(--cyan);
+    outline: 2px solid var(--foreground);
     outline-offset: 2px;
   }
-  select:focus, input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px oklch(0.84 0.13 205 / 0.14); }
+  select:focus, input:focus { border-color: var(--foreground); box-shadow: 0 0 0 3px oklch(0.145 0 0 / 0.15); }
+  .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: var(--space-2) 12px;
+  }
+  .icon-btn svg { display: none; }
+  html[data-theme="dark"] .icon-btn .ico-moon { display: block; }
+  html[data-theme="light"] .icon-btn .ico-sun { display: block; }
+
   main { display: grid; grid-template-columns: 38fr 34fr 28fr; gap: var(--space-3); min-height: 0; }
   .bottom { display: grid; grid-template-columns: 62fr 38fr; gap: var(--space-3); min-height: 0; }
   main > .panel, .bottom > .panel { min-width: 0; }
+
   .panel {
     position: relative;
     display: grid;
     grid-template-rows: auto 1fr auto;
     min-height: 0;
     padding: var(--space-2) var(--space-3) var(--space-2);
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    background: linear-gradient(180deg, oklch(0.22 0.045 252 / 0.78), oklch(0.16 0.035 255 / 0.88));
-    box-shadow: 0 18px 40px oklch(0.1 0.03 255 / 0.55), 0 0 24px oklch(0.84 0.13 205 / 0.04) inset;
-    transition: border-color 0.2s var(--ease), box-shadow 0.25s var(--ease);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--card);
+    box-shadow: var(--shadow-1);
+    overflow: hidden;
+    animation: riseIn 500ms var(--ease) both;
+    transition:
+      background var(--theme-transition),
+      box-shadow var(--theme-transition),
+      transform 200ms var(--ease),
+      border-color 200ms var(--ease);
   }
-  .panel:hover {
-    border-color: oklch(0.8 0.12 210 / 0.34);
-    box-shadow: 0 18px 44px oklch(0.1 0.03 255 / 0.6), 0 0 28px oklch(0.84 0.13 205 / 0.08) inset;
-  }
-  .panel::before, .panel::after {
-    content: ""; position: absolute; width: 16px; height: 16px; border: 2px solid var(--cyan);
+  /* ---- 各面板顶部 accent bar ---- */
+  .panel::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px;
+    background: linear-gradient(90deg, var(--panel-accent, var(--foreground)) 0%, transparent 100%);
     opacity: 0.7; pointer-events: none;
+    transition: opacity 0.2s var(--ease);
   }
-  .panel::before { top: -1px; left: -1px; border-right: none; border-bottom: none; border-radius: 12px 0 0 0; }
-  .panel::after { bottom: -1px; right: -1px; border-left: none; border-top: none; border-radius: 0 0 12px 0; }
+  .panel:hover::before { opacity: 1; }
+  #mapPanel { --panel-accent: var(--accent-map); animation-delay: 80ms; }
+  #trendPanel { --panel-accent: var(--accent-trend); animation-delay: 160ms; }
+  #provincePanel { --panel-accent: var(--accent-province); animation-delay: 240ms; }
+  #heatmapPanel { --panel-accent: var(--accent-heat); animation-delay: 320ms; }
+  #majorsPanel { --panel-accent: var(--accent-majors); animation-delay: 400ms; }
+  .panel:hover { border-color: var(--border-strong); box-shadow: var(--shadow-2); transform: translateY(-2px); }
   .panel-head {
     display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
-    padding-bottom: var(--space-2); border-bottom: 1px solid oklch(0.8 0.12 210 / 0.12);
+    padding-bottom: var(--space-2); border-bottom: 1px solid var(--border);
   }
   .panel-head h2 {
-    margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 600; letter-spacing: 1.5px;
+    margin: 0; font-family: var(--font-display); font-size: 15.5px; font-weight: 700; letter-spacing: 1px;
     display: flex; align-items: center; gap: var(--space-2);
+    color: var(--foreground);
     white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis;
   }
-  .panel-head h2::before {
-    content: ""; width: 4px; height: 16px; border-radius: 2px;
-    background: linear-gradient(180deg, var(--cyan), var(--blue));
-    box-shadow: 0 0 10px oklch(0.84 0.13 205 / 0.55);
-  }
   .panel-head .meta {
-    font-size: 12px; color: var(--muted); white-space: nowrap;
+    font-size: 12px; color: var(--muted-foreground); white-space: nowrap;
     min-width: 0; overflow: hidden; text-overflow: ellipsis;
   }
   #trendMeta {
     margin-right: auto; padding-left: var(--space-1); font-variant-numeric: tabular-nums;
-    max-width: 210px; overflow: hidden; text-overflow: ellipsis;
+    max-width: 230px; overflow: hidden; text-overflow: ellipsis;
+    color: var(--foreground); font-weight: 600;
   }
   .chart { position: relative; width: 100%; height: 100%; min-height: 0; }
   .panel.loading .chart { opacity: 0.28; }
   .panel.loading .chart::after {
     content: "";
     position: absolute; inset: 0;
-    background: linear-gradient(100deg, transparent 20%, oklch(0.84 0.13 205 / 0.09) 50%, transparent 80%);
+    background: linear-gradient(100deg, transparent 20%, var(--border) 50%, transparent 80%);
     background-size: 220% 100%;
     animation: shimmer 1.4s linear infinite;
     pointer-events: none;
   }
   @keyframes shimmer { from { background-position: 130% 0; } to { background-position: -80% 0; } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ---- 成绩速览指标带 ---- */
+  .score-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2);
+    padding: var(--space-2) 0 var(--space-1);
+  }
+  .score-cell {
+    position: relative; overflow: hidden;
+    padding: 10px 12px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: linear-gradient(135deg, var(--card-solid) 0%, oklch(0 0 0 / 0) 100%);
+    animation: riseIn 400ms ease-out both;
+    transition: background 0.25s var(--ease), border-color 0.25s var(--ease), transform 0.18s var(--ease);
+  }
+  .score-cell::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 100% 0%, var(--cell-glow, oklch(0 0 0 / 0.08)) 0%, transparent 60%);
+    opacity: 0.8;
+  }
+  .score-cell::after {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 2px;
+    background: linear-gradient(90deg, transparent 10%, var(--sc, var(--foreground)) 50%, transparent 90%);
+    opacity: 0.85;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  }
+  .score-cell:hover { transform: translateY(-2px); border-color: var(--border-strong); }
+  .score-cell .sc-label { position: relative; font-size: 10.5px; color: var(--muted-foreground); letter-spacing: 0.6px; text-transform: uppercase; }
+  .score-cell .sc-value {
+    position: relative;
+    font-family: var(--font-num); font-weight: 700; font-size: 22px; line-height: 1.2;
+    color: var(--sc, var(--foreground)); font-variant-numeric: tabular-nums;
+    transition: color 0.25s var(--ease);
+    text-shadow: 0 0 20px var(--sc, var(--foreground));
+  }
+  .score-cell .sc-sub { position: relative; font-size: 10px; color: var(--muted-foreground); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ---- 成绩格语义化配色 ---- */
+  .score-cell:nth-child(1) { --sc: var(--accent-rank); --cell-glow: var(--accent-rank); animation-delay: 0ms; }
+  .score-cell:nth-child(2) { --sc: var(--accent-score); --cell-glow: var(--accent-score); animation-delay: 60ms; }
+  .score-cell:nth-child(3) { --sc: var(--accent-delta-up); --cell-glow: var(--accent-delta-up); animation-delay: 120ms; }
+  .score-cell:nth-child(4) { --sc: var(--accent-best); --cell-glow: var(--accent-best); animation-delay: 180ms; }
+  .score-cell .up { color: var(--accent-delta-up); text-shadow: 0 0 20px var(--accent-delta-up); }
+  .score-cell .down { color: var(--accent-delta-down); text-shadow: 0 0 20px var(--accent-delta-down); }
+
   .province-body { display: grid; grid-template-rows: 40% 1fr; gap: var(--space-1); min-height: 0; }
   .school-list { overflow-y: auto; min-height: 0; padding-right: var(--space-1); }
   .school-list::-webkit-scrollbar, .majors-body::-webkit-scrollbar { width: 6px; }
   .school-list::-webkit-scrollbar-thumb, .majors-body::-webkit-scrollbar-thumb {
-    background: oklch(0.8 0.12 210 / 0.25); border-radius: 3px;
+    background: var(--border-strong); border-radius: 3px;
   }
   .school-item {
-    display: grid; grid-template-columns: 40px 1fr auto; align-items: center;
-    gap: var(--space-2); padding: 6px 8px; border-radius: 6px; cursor: pointer;
-    transition: background 0.15s var(--ease), color 0.15s var(--ease);
+    display: grid; grid-template-columns: 34px 1fr auto auto; align-items: center;
+    gap: var(--space-2); padding: 6px 8px; border-radius: 8px; cursor: pointer;
+    border: 1px solid transparent;
+    transition: background 0.15s var(--ease), border-color 0.15s var(--ease), transform 0.15s var(--ease);
+    animation: riseIn 300ms ease-out both;
   }
-  .school-item:hover { background: oklch(0.84 0.13 205 / 0.08); }
-  .school-rank { font-family: var(--font-display); font-size: 12px; color: var(--cyan); font-variant-numeric: tabular-nums; }
-  .school-name { font-size: 12.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .school-item:hover { background: var(--secondary); border-color: var(--border); transform: translateX(2px); }
+  .school-medal {
+    width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center;
+    font-family: var(--font-num); font-weight: 700; font-size: 12.5px;
+  }
+  .school-medal.m1 {
+    background: linear-gradient(135deg, var(--medal-gold-1) 0%, var(--medal-gold-2) 100%);
+    color: var(--medal-gold-fg);
+    box-shadow: var(--shadow-1), 0 0 12px oklch(0.80 0.15 85 / 0.35);
+    border: 1px solid oklch(0.85 0.14 85 / 0.55);
+  }
+  .school-medal.m2 { background: var(--secondary); color: var(--foreground); border: 1px solid var(--border-strong); }
+  .school-medal.m3 { background: var(--secondary); color: var(--muted-foreground); border: 1px dashed var(--border-strong); }
+  .school-medal.mn { background: transparent; color: var(--muted-foreground); font-size: 11px; }
+  .school-rank { font-family: var(--font-mono); font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .school-name { font-size: 12.5px; color: var(--foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .school-score { font-family: var(--font-mono); font-size: 11.5px; color: var(--foreground); font-variant-numeric: tabular-nums; }
   .school-level {
-    font-size: 10px; padding: 1px 6px; border-radius: 999px;
-    color: var(--muted); border: 1px solid oklch(0.8 0.12 210 / 0.18);
+    font-size: 10px; padding: 1px 7px; border-radius: 999px;
+    color: var(--muted-foreground); border: 1px solid var(--border);
   }
-  .school-level.lv-985 { color: var(--amber); border-color: oklch(0.84 0.14 85 / 0.45); }
-  .school-level.lv-211 { color: var(--blue); border-color: oklch(0.7 0.16 255 / 0.45); }
-  .school-level.lv-双一流 { color: var(--violet); border-color: oklch(0.78 0.11 295 / 0.45); }
-  .empty-tip { color: var(--muted); font-size: 12px; text-align: center; padding: var(--space-4) var(--space-2); }
+  .school-level.lv-985 { color: var(--foreground); border-color: var(--foreground); }
+  .school-level.lv-211 { color: var(--foreground); border-color: var(--border-strong); }
+  .school-level.lv-双一流 { color: var(--muted-foreground); border-color: var(--border-strong); }
+  .empty-tip { color: var(--muted-foreground); font-size: 12px; text-align: center; padding: var(--space-4) var(--space-2); }
   .majors-body { overflow-y: auto; min-height: 0; }
   .majors-table { width: 100%; border-collapse: collapse; font-size: 12px; }
   .majors-table th {
-    position: sticky; top: 0; z-index: 1; text-align: left; font-weight: 500;
-    color: var(--muted); background: oklch(0.2 0.04 252);
-    padding: 6px 8px; border-bottom: 1px solid oklch(0.8 0.12 210 / 0.16);
+    position: sticky; top: 0; z-index: 1; text-align: left; font-weight: 600; letter-spacing: 0.4px;
+    color: var(--muted-foreground); background: var(--card-solid);
+    padding: 6px 8px; border-bottom: 1px solid var(--border-strong);
   }
-  .majors-table td { padding: 6px 8px; border-bottom: 1px solid oklch(0.8 0.12 210 / 0.07); color: var(--text); }
-  .majors-table tr:hover td { background: oklch(0.84 0.13 205 / 0.05); }
-  .majors-table td.num { font-family: var(--font-display); color: var(--cyan); font-variant-numeric: tabular-nums; }
-  .majors-table td.empty { text-align: center; color: var(--muted); padding: var(--space-4) 0; }
+  .majors-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); color: var(--foreground); }
+  .majors-table tr:hover td { background: var(--secondary); }
+  .majors-table td.num { font-family: var(--font-num); color: var(--foreground); font-variant-numeric: tabular-nums; }
+  .majors-table td.empty { text-align: center; color: var(--muted-foreground); padding: var(--space-4) 0; }
   .heatmap-empty {
     position: absolute; inset: 46px 12px 26px; display: grid; place-items: center;
-    color: var(--muted); font-size: 13px; letter-spacing: 1px;
-    background: oklch(0.16 0.03 255 / 0.35); border-radius: 8px; pointer-events: none;
+    color: var(--muted-foreground); font-size: 13px; letter-spacing: 1px;
+    background: var(--card-solid); border-radius: var(--radius-sm); pointer-events: none;
   }
-  .hint { font-size: 11px; color: var(--muted); padding: var(--space-1) 2px 0; letter-spacing: 0.4px; }
-  .school-search { display: flex; gap: var(--space-2); align-items: center; min-width: 0; }
-  .school-search input { width: 168px; min-width: 0; padding: var(--space-2) 10px; }
+  .hint { font-size: 11px; color: var(--muted-foreground); padding: var(--space-1) 2px 0; letter-spacing: 0.3px; }
+  .trend-toolbar {
+    display: flex; padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--border);
+  }
+  .school-search { display: flex; gap: var(--space-2); align-items: center; min-width: 0; flex: 1; }
+  .school-search input { flex: 1; min-width: 0; padding: var(--space-2) 10px; }
+  /* ---- 专业表逐年分组头 ---- */
+  .majors-table tr.year-group td {
+    position: sticky; top: 25px; z-index: 1;
+    background: var(--card-solid);
+    color: var(--accent-majors);
+    font-family: var(--font-num); font-weight: 700; font-size: 11px; letter-spacing: 1px;
+    padding: 4px 8px; border-bottom: 1px solid var(--border-strong);
+  }
+  .majors-table tr.year-group.active td {
+    background: color-mix(in oklch, var(--accent-majors) 18%, var(--card-solid));
+    border-left: 3px solid var(--accent-majors);
+  }
+  .majors-table tr.year-group.active td::after {
+    content: " · 点击格";
+    font-weight: 400; letter-spacing: 0; opacity: 0.75;
+  }
   footer {
     display: flex; align-items: center; gap: var(--space-4);
     padding: var(--space-1) var(--space-3);
-    font-size: 11px; color: var(--muted);
-    border: 1px solid oklch(0.8 0.12 210 / 0.1); border-radius: 8px;
-    background: oklch(0.18 0.035 255 / 0.55);
+    font-size: 11px; color: var(--muted-foreground);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--card-solid);
+    transition:
+      background var(--theme-transition),
+      border-color var(--theme-transition),
+      color var(--theme-transition);
+    animation: riseIn 500ms var(--ease) 480ms both;
   }
   footer .spacer { flex: 1; }
   .status { display: inline-flex; align-items: center; gap: var(--space-2); }
   .status i {
     width: 7px; height: 7px; border-radius: 50%;
-    background: var(--muted); box-shadow: 0 0 8px currentColor;
+    background: var(--muted-foreground); box-shadow: 0 0 8px currentColor;
     transition: background 0.2s var(--ease);
   }
-  .status.ok i { background: oklch(0.78 0.17 150); }
-  .status.bad i { background: var(--danger); }
+  .status.ok i {
+    background: var(--pos); box-shadow: 0 0 10px var(--pos);
+    animation: pulse-ok 2.2s ease-in-out infinite;
+  }
+  .status.bad i {
+    background: var(--neg); box-shadow: 0 0 10px var(--neg);
+    animation: pulse-bad 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse-ok {
+    0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--pos), 0 0 0 0 oklch(0.75 0.15 150 / 0.35); }
+    50%      { opacity: 0.85; box-shadow: 0 0 14px var(--pos), 0 0 0 5px oklch(0.75 0.15 150 / 0); }
+  }
+  @keyframes pulse-bad {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.55; }
+  }
   .toast {
     position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%) translateY(12px);
-    padding: 10px 18px; font-size: 13px; border-radius: 8px;
-    background: oklch(0.24 0.05 245 / 0.97);
-    border: 1px solid oklch(0.8 0.12 210 / 0.4);
-    color: var(--text); opacity: 0; pointer-events: none;
+    padding: 10px 18px; font-size: 13px; border-radius: var(--radius-sm);
+    background: var(--card-solid);
+    border: 1px solid var(--border-strong);
+    color: var(--foreground); opacity: 0; pointer-events: none;
     transition: opacity 0.2s var(--ease), transform 0.2s var(--ease);
-    box-shadow: 0 10px 30px oklch(0.1 0.03 255 / 0.6); z-index: 20;
+    box-shadow: var(--shadow-2); z-index: 20;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .error-banner {
     position: fixed; top: var(--space-3); left: 50%; transform: translateX(-50%);
     display: none; align-items: center; gap: var(--space-3);
     max-width: min(760px, 90vw);
-    padding: 10px 16px; border-radius: 8px; font-size: 13px;
-    background: oklch(0.3 0.09 25 / 0.95);
-    border: 1px solid oklch(0.7 0.19 25 / 0.8);
-    color: oklch(0.96 0.02 25);
-    box-shadow: 0 10px 30px oklch(0.1 0.03 255 / 0.5);
+    padding: 10px 16px; border-radius: var(--radius-sm); font-size: 13px;
+    background: var(--card-solid);
+    border: 1px solid var(--neg);
+    color: var(--foreground);
+    box-shadow: var(--shadow-2);
     z-index: 30;
   }
   .error-banner.show { display: flex; }
   .error-banner button { padding: 4px 12px; font-size: 12px; background: transparent; border-color: currentColor; color: inherit; }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
   }
@@ -290,22 +525,21 @@
     main { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
     .screen { grid-template-rows: auto minmax(0, 1fr) minmax(0, 0.8fr) auto; overflow-y: auto; }
     .bottom { grid-template-columns: 1fr; }
-
     #provincePanel { display: none; }
   }
-  </style>
+</style>
 </head>
 <body>
 <div class="screen" id="screen">
   <header>
     <div class="brand">
-      <div class="logo">U</div>
+      <div class="logo" aria-hidden="true">U</div>
       <div>
         <h1>全国大学数据分析大屏</h1>
         <p>SHANGHAIRANKING · 中国大学排名 · 2021-2026</p>
       </div>
     </div>
-    <div class="kpis">
+    <div class="kpis" aria-label="关键指标">
       <div class="kpi total"><b id="kpiTotal">-</b><span>上榜高校</span></div>
       <div class="kpi l985"><b id="kpi985">-</b><span>985 高校</span></div>
       <div class="kpi l211"><b id="kpi211">-</b><span>211 高校</span></div>
@@ -313,7 +547,7 @@
     </div>
     <div class="controls">
       <label for="yearSelect">年份</label>
-      <select id="yearSelect">
+      <select id="yearSelect" aria-label="选择数据年份">
         <option value="2026">2026</option>
         <option value="2025">2025</option>
         <option value="2024">2024</option>
@@ -321,41 +555,70 @@
         <option value="2022">2022</option>
         <option value="2021">2021</option>
       </select>
+      <button id="themeToggle" type="button" class="icon-btn" title="切换亮暗主题" aria-label="切换亮暗主题">
+        <svg class="ico-moon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg class="ico-sun" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        <span id="themeLabel">主题</span>
+      </button>
       <button id="reloadBtn" type="button">刷新数据</button>
     </div>
   </header>
 
   <main>
-    <section class="panel" id="mapPanel">
+    <section class="panel" id="mapPanel" aria-label="全国高校分布地图">
       <div class="panel-head">
         <h2>全国高校分布</h2>
         <span class="meta" id="mapMeta">省份着色：上榜高校数量</span>
       </div>
-      <div class="chart" id="mapChart"></div>
+      <div class="chart" id="mapChart" role="img" aria-label="中国高校分布地图"></div>
       <div class="hint">悬停查看 985/211；点击省份 → 右侧显示省内高校与层次饼图</div>
     </section>
 
-    <section class="panel" id="trendPanel">
+    <section class="panel" id="trendPanel" aria-label="排名趋势与成绩速览" style="grid-template-rows:auto auto auto 1fr auto">
       <div class="panel-head">
         <h2>排名趋势</h2>
         <span class="meta" id="trendMeta"></span>
+      </div>
+      <div class="trend-toolbar">
         <div class="school-search">
-          <input id="schoolInput" list="schoolOptions" placeholder="输入学校名，如 清华大学" autocomplete="off">
+          <input id="schoolInput" list="schoolOptions" placeholder="输入学校名，如 清华大学" autocomplete="off" aria-label="搜索学校名称">
           <datalist id="schoolOptions"></datalist>
           <button id="searchBtn" type="button" class="primary">查看趋势</button>
         </div>
       </div>
-      <div class="chart" id="trendChart"></div>
-      <div class="hint">Y 轴越靠上名次越高；「500+」为软科 500 名之后；底部滑块可缩放</div>
+      <div class="score-strip" aria-label="学校成绩速览">
+        <div class="score-cell">
+          <div class="sc-label">当前排名</div>
+          <div class="sc-value" id="scoreRank">--</div>
+          <div class="sc-sub" id="scoreRankSub">等待选择学校</div>
+        </div>
+        <div class="score-cell">
+          <div class="sc-label">最新总分</div>
+          <div class="sc-value" id="scoreScore">--</div>
+          <div class="sc-sub" id="scoreScoreSub">--</div>
+        </div>
+        <div class="score-cell">
+          <div class="sc-label">年度变化</div>
+          <div class="sc-value" id="scoreDelta">--</div>
+          <div class="sc-sub" id="scoreDeltaSub">较上一年度</div>
+        </div>
+        <div class="score-cell">
+          <div class="sc-label">历史最佳</div>
+          <div class="sc-value" id="scoreBest">--</div>
+          <div class="sc-sub" id="scoreBestSub">历史最低排名</div>
+        </div>
+      </div>
+      <div class="chart" id="trendChart" role="img" aria-label="学校排名趋势折线图"></div>
+      <div class="hint">Y 轴越靠上名次越高；「500+」为软科 500 名之后；主线为排名，灰色虚线为总分；底部滑块可缩放</div>
     </section>
 
-    <section class="panel" id="provincePanel">
+    <section class="panel" id="provincePanel" aria-label="省份详情">
       <div class="panel-head">
         <h2 id="provinceTitle">省份详情</h2>
         <span class="meta" id="provinceMeta">点击地图选择</span>
       </div>
       <div class="province-body">
-        <div class="chart" id="provincePie"></div>
+        <div class="chart" id="provincePie" role="img" aria-label="省份高校层次饼图"></div>
         <div class="school-list" id="schoolList">
           <div class="empty-tip">点击左侧地图中的省份查看</div>
         </div>
@@ -365,16 +628,16 @@
   </main>
 
   <section class="bottom">
-    <section class="panel" id="heatmapPanel">
+    <section class="panel" id="heatmapPanel" aria-label="招生热力图">
       <div class="panel-head">
         <h2>招生热力图</h2>
         <span class="meta" id="heatmapMeta">年份 × 省份 · 招生人数</span>
       </div>
-      <div class="chart" id="heatmapChart"></div>
-      <div class="hint">颜色越亮招生越多；按住鼠标拖出矩形框选 → 右侧表格联动专业招生人数</div>
+      <div class="chart" id="heatmapChart" role="img" aria-label="招生人数热力图"></div>
+      <div class="hint">颜色越亮招生越多；单击格子 → 该省逐年招生；拖动框选 → 区域汇总联动专业表</div>
     </section>
 
-    <section class="panel" id="majorsPanel">
+    <section class="panel" id="majorsPanel" aria-label="专业招生统计">
       <div class="panel-head">
         <h2>专业招生</h2>
         <span class="meta" id="majorsMeta">--</span>
@@ -397,10 +660,10 @@
     <span class="status" id="healthStatus"><i></i><span id="healthText">正在检查服务…</span></span>
     <span>数据来源：软科中国大学排名（主榜）· 6 个年份 / 600 所高校</span>
     <span class="spacer"></span>
-    <span id="clock"></span>
+    <span id="clock" role="timer" aria-live="off"></span>
   </footer>
 </div>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status"></div>
 <div class="error-banner" id="errorBanner" role="alert"><span id="errorText"></span><button id="retryBtn" type="button">重试</button></div>
 
 <script>
@@ -409,6 +672,7 @@
 
   var API_BASE = location.protocol === "file:" ? "http://127.0.0.1:5000" : "";
   var RANK_PLUS = 1000;
+  var THEME_KEY = "ssh-dash-theme";
   var state = { year: 2026, school: "清华大学", province: "广东" };
   var mapChart = null;
   var trendChart = null;
@@ -424,6 +688,152 @@
   var retryAction = null;
 
   function $(id) { return document.getElementById(id); }
+
+  /* ---------- 主题系统：暗色 / 亮色切换（localStorage 持久化） ---------- */
+  function currentTheme() {
+    var t = "dark";
+    try { t = localStorage.getItem(THEME_KEY) || "dark"; } catch (e) {}
+    return t === "light" ? "light" : "dark";
+  }
+  /* ECharts 5.5.1 的 zrender 颜色解析器不支持 oklch()，
+     动画插值时会返回 undefined 导致帧崩溃。
+     这里用 canvas 把 oklch() 栅格化为 rgba()（浏览器负责色域映射），
+     保证图表动画在所有环境稳定。 */
+  var _cssColorCtx = null;
+  function cssToRgba(str) {
+    if (typeof str !== "string" || str.indexOf("oklch(") !== 0) return str;
+    var m = str.match(/^oklch\(([^)]+)\)$/);
+    if (!m) return str;
+    var parts = m[1].split("/");
+    var alpha = parts.length > 1 ? parseFloat(parts[1]) : 1;
+    if (!_cssColorCtx) {
+      var cv = document.createElement("canvas");
+      cv.width = cv.height = 1;
+      _cssColorCtx = cv.getContext("2d", { willReadFrequently: true });
+    }
+    _cssColorCtx.fillStyle = "#010203";
+    _cssColorCtx.fillStyle = "oklch(" + parts[0].trim() + ")";
+    if (_cssColorCtx.fillStyle === "#010203") return str; /* 浏览器不支持 oklch，原样返回 */
+    _cssColorCtx.clearRect(0, 0, 1, 1);
+    _cssColorCtx.fillRect(0, 0, 1, 1);
+    var d = _cssColorCtx.getImageData(0, 0, 1, 1).data;
+    return "rgba(" + d[0] + "," + d[1] + "," + d[2] + "," + alpha + ")";
+  }
+  function rgbaTheme(raw) {
+    var out = {};
+    Object.keys(raw).forEach(function (k) {
+      var v = raw[k];
+      out[k] = Array.isArray(v) ? v.map(cssToRgba) : cssToRgba(v);
+    });
+    return out;
+  }
+  function chartTheme() {
+    var light = document.documentElement.getAttribute("data-theme") === "light";
+    if (light) {
+      /* ============ 亮色 ECharts：冷白底 + 电光蓝/品红 ============ */
+      return rgbaTheme({
+        axisLabel: "oklch(0.46 0.035 260)",
+        axisLine: "oklch(0.40 0.05 255 / 0.45)",
+        splitLine: "oklch(0.40 0.05 255 / 0.10)",
+        tooltipBg: "oklch(0.990 0.006 245 / 0.97)",
+        tooltipBorder: "oklch(0.52 0.21 258 / 0.30)",
+        tooltipText: "oklch(0.17 0.035 266)",
+        mapOut: "oklch(0.930 0.015 248)",
+        mapArea: "oklch(0.975 0.010 245)",
+        mapBorder: "oklch(0.45 0.08 250 / 0.30)",
+        mapLabel: "oklch(0.46 0.035 260)",
+        mapEmph: "oklch(0.90 0.05 235)",
+        mapEmphBorder: "oklch(0.52 0.21 258)",
+        mapSelectArea: "oklch(0.52 0.21 258)",
+        mapSelectBorder: "oklch(0.985 0.005 240)",
+        mapSelectLabel: "oklch(0.985 0.005 240)",
+        mapRange: ["oklch(0.975 0.010 245)", "oklch(0.72 0.12 240)", "oklch(0.48 0.22 258)"],
+        lineMain: "oklch(0.52 0.21 258)",
+        lineMainShadow: "oklch(0.55 0.20 255 / 0.30)",
+        lineScore: "oklch(0.52 0.24 330)",
+        label: "oklch(0.46 0.035 260)",
+        sliderBorder: "oklch(0.45 0.08 250 / 0.30)",
+        sliderBg: "oklch(0.975 0.010 245 / 0.85)",
+        sliderFiller: "oklch(0.52 0.21 258 / 0.14)",
+        sliderHandle: "oklch(0.52 0.21 258)",
+        sliderText: "oklch(0.48 0.03 260)",
+        pieBorder: "oklch(0.990 0.006 245)",
+        pieLabel: "oklch(0.46 0.035 260)",
+        pieLabelLine: "oklch(0.45 0.06 255 / 0.35)",
+        heatRange: ["oklch(0.975 0.010 245)", "oklch(0.72 0.12 240)", "oklch(0.48 0.22 258)"],
+        heatCell: "oklch(0.90 0.05 235)",
+        heatLabel: "oklch(0.35 0.04 260)",
+        heatLabelBorder: "oklch(0.990 0.006 245 / 0.95)",
+        heatLabelHigh: "rgba(255,255,255,0.97)",
+        heatLabelHighBorder: "rgba(30,42,88,0.45)",
+        heatBorder: "oklch(0.990 0.006 245 / 0.90)",
+        heatEmph: "oklch(0.52 0.24 330)",
+        legend: "oklch(0.46 0.035 260)",
+        toolbox: "oklch(0.48 0.03 260)",
+        provColors: ["oklch(0.52 0.21 258)", "oklch(0.50 0.20 300)", "oklch(0.55 0.22 330)", "oklch(0.72 0.03 260)"],
+        marker: "oklch(0.52 0.21 258 / 0.22)"
+      });
+    }
+    /* ============ 深色 ECharts：深夜蓝黑 + 霓虹青/品红 ============ */
+    return rgbaTheme({
+      axisLabel: "oklch(0.62 0.035 258)",
+      axisLine: "oklch(0.70 0.06 250 / 0.45)",
+      splitLine: "oklch(0.72 0.08 240 / 0.12)",
+      tooltipBg: "oklch(0.135 0.032 266 / 0.96)",
+      tooltipBorder: "oklch(0.82 0.16 205 / 0.40)",
+      tooltipText: "oklch(0.96 0.012 220)",
+      mapOut: "oklch(0.115 0.030 268)",
+      mapArea: "oklch(0.17 0.038 264)",
+      mapBorder: "oklch(0.60 0.10 235 / 0.40)",
+      mapLabel: "oklch(0.62 0.035 258)",
+      mapEmph: "oklch(0.26 0.06 250)",
+      mapEmphBorder: "oklch(0.88 0.16 200)",
+      mapSelectArea: "oklch(0.88 0.16 200)",
+      mapSelectBorder: "oklch(0.095 0.028 268)",
+      mapSelectLabel: "oklch(0.095 0.028 268)",
+      mapRange: ["oklch(0.17 0.038 264)", "oklch(0.45 0.13 245)", "oklch(0.88 0.16 200)"],
+      lineMain: "oklch(0.88 0.16 200)",
+      lineMainShadow: "oklch(0.82 0.16 205 / 0.38)",
+      lineScore: "oklch(0.74 0.24 330)",
+      label: "oklch(0.62 0.035 258)",
+      sliderBorder: "oklch(0.60 0.10 235 / 0.40)",
+      sliderBg: "oklch(0.135 0.032 266 / 0.65)",
+      sliderFiller: "oklch(0.82 0.16 205 / 0.22)",
+      sliderHandle: "oklch(0.88 0.16 200)",
+      sliderText: "oklch(0.58 0.03 258)",
+      pieBorder: "oklch(0.095 0.028 268)",
+      pieLabel: "oklch(0.62 0.035 258)",
+      pieLabelLine: "oklch(0.60 0.10 235 / 0.40)",
+      heatRange: ["oklch(0.17 0.038 264)", "oklch(0.45 0.13 245)", "oklch(0.88 0.16 200)"],
+      heatCell: "oklch(0.26 0.06 250)",
+      heatLabel: "oklch(0.94 0.02 220)",
+      heatLabelBorder: "oklch(0.095 0.028 268 / 0.95)",
+      heatLabelHigh: "rgba(6,14,34,0.88)",
+      heatLabelHighBorder: "rgba(255,255,255,0.28)",
+      heatBorder: "oklch(0.095 0.028 268 / 0.90)",
+      heatEmph: "oklch(0.74 0.24 330)",
+      legend: "oklch(0.62 0.035 258)",
+      toolbox: "oklch(0.58 0.03 258)",
+      provColors: ["oklch(0.88 0.16 200)", "oklch(0.72 0.19 280)", "oklch(0.74 0.24 330)", "oklch(0.45 0.05 258)"],
+      marker: "oklch(0.82 0.16 205 / 0.28)"
+    });
+  }
+  function applyTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
+    var label = $("themeLabel");
+    if (label) label.textContent = t === "light" ? "亮色" : "暗色";
+    /* 等 CSS 过渡跑完（350ms）再重绘 ECharts，避免闪烁 */
+    setTimeout(function () {
+      loadMap();
+      loadTrend(state.school);
+      loadProvince(state.province);
+      loadHeatmap();
+    }, 380);
+  }
+  function toggleTheme() {
+    applyTheme(currentTheme() === "dark" ? "light" : "dark");
+  }
 
   function apiUrl(path, params) {
     var qs = [];
@@ -502,6 +912,58 @@
     };
   }
 
+  // ---------- 数字滚动动画（尊重 prefers-reduced-motion） ----------
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function animateNumber(el, target, formatter) {
+    if (!el) return;
+    target = Number(target) || 0;
+    if (reduceMotion) { el.textContent = formatter ? formatter(target) : String(target); return; }
+    var from = parseFloat(el.dataset.val) || 0;
+    el.dataset.val = target;
+    var start = null;
+    var dur = 800;
+    function step(ts) {
+      if (!start) start = ts;
+      var p = Math.min(1, (ts - start) / dur);
+      var eased = 1 - Math.pow(1 - p, 3);
+      var v = from + (target - from) * eased;
+      el.textContent = formatter ? formatter(v) : String(Math.round(v));
+      if (p < 1) requestAnimationFrame(step);
+      else el.textContent = formatter ? formatter(target) : String(target);
+    }
+    requestAnimationFrame(step);
+  }
+
+  // ---------- 成绩速览指标带 ----------
+  function renderScoreStrip(data) {
+    var years = data.years || [];
+    var ranks = data.ranks || [];
+    var scores = data.scores || [];
+    var last = years.length - 1;
+    var curRank = ranks[last];
+    var curScore = scores[last];
+    var prevRank = ranks[last - 1];
+
+    $("scoreRank").textContent = rankText(curRank);
+    $("scoreRankSub").textContent = (last >= 0 ? years[last] + " 年" : "--") + " · " + state.school;
+    $("scoreScore").textContent = (curScore === null || curScore === undefined) ? "--" : curScore;
+    $("scoreScoreSub").textContent = "软科总分";
+
+    var deltaEl = $("scoreDelta");
+    var deltaSub = $("scoreDeltaSub");
+    if (curRank != null && prevRank != null) {
+      var delta = prevRank - curRank;
+      if (delta > 0) { deltaEl.textContent = "↑ " + delta; deltaEl.className = "sc-value up"; deltaSub.textContent = "较 " + years[last - 1] + " 年上升"; }
+      else if (delta < 0) { deltaEl.textContent = "↓ " + (-delta); deltaEl.className = "sc-value down"; deltaSub.textContent = "较 " + years[last - 1] + " 年下降"; }
+      else { deltaEl.textContent = "—"; deltaEl.className = "sc-value"; deltaSub.textContent = "较 " + years[last - 1] + " 年持平"; }
+    } else { deltaEl.textContent = "--"; deltaEl.className = "sc-value"; deltaSub.textContent = "较上一年度"; }
+
+    var best = Infinity, bestYear = null;
+    ranks.forEach(function (r, i) { if (r !== null && r < best) { best = r; bestYear = years[i]; } });
+    if (best === Infinity) { $("scoreBest").textContent = "--"; $("scoreBestSub").textContent = "暂无数据"; }
+    else { $("scoreBest").textContent = rankText(best); $("scoreBestSub").textContent = bestYear + " 年历史最佳"; }
+  }
+
   // ------------------------------------------------------------------ 地图
   function initMap(geoJson) {
     echarts.registerMap("china", geoJson);
@@ -520,6 +982,7 @@
   }
 
   function loadMap() {
+    var C = chartTheme();
     setLoading("mapPanel", true);
     return fetchJSON("/api/map_data", { year: state.year })
       .then(function (rows) {
@@ -540,19 +1003,19 @@
         });
         var maxTotal = rows.reduce(function (m, r) { return Math.max(m, r.total); }, 0);
 
-        $("kpiTotal").textContent = total;
-        $("kpi985").textContent = c985;
-        $("kpi211").textContent = c211;
-        $("kpiProv").textContent = rows.length;
+        animateNumber($("kpiTotal"), total);
+        animateNumber($("kpi985"), c985);
+        animateNumber($("kpi211"), c211);
+        animateNumber($("kpiProv"), rows.length);
         $("mapMeta").textContent = state.year + " 年 · 省份着色：上榜高校数量";
 
         mapChart.setOption({
           backgroundColor: "transparent",
           tooltip: {
             trigger: "item",
-            backgroundColor: "rgba(6, 20, 42, 0.94)",
-            borderColor: "rgba(56, 189, 248, 0.45)",
-            textStyle: { color: "#dbeafe", fontSize: 12 },
+            backgroundColor: C.tooltipBg,
+            borderColor: C.tooltipBorder,
+            textStyle: { color: C.tooltipText, fontSize: 12 },
             formatter: function (p) {
               var d = byName[p.name];
               if (!d) return p.name + "<br/>暂无软科排名数据";
@@ -569,9 +1032,9 @@
             itemWidth: 12,
             itemHeight: 120,
             text: ["多", "少"],
-            textStyle: { color: "#7c93b5", fontSize: 11 },
-            inRange: { color: ["#0b2545", "#12457a", "#1179a8", "#22d3ee"] },
-            outOfRange: { color: "rgba(30, 41, 59, 0.55)" }
+            textStyle: { color: C.axisLabel, fontSize: 11 },
+            inRange: { color: C.mapRange },
+            outOfRange: { color: C.mapOut }
           },
           series: [{
             type: "map",
@@ -583,25 +1046,36 @@
             bottom: 20,
             label: {
               show: true,
-              color: "#a9c7e8",
+              color: C.mapLabel,
               fontSize: 10,
               formatter: function (p) { return p.name; }
             },
             labelLayout: { hideOverlap: true },
             itemStyle: {
-              areaColor: "#0d2242",
-              borderColor: "rgba(56, 189, 248, 0.55)",
+              areaColor: C.mapArea,
+              borderColor: C.mapBorder,
               borderWidth: 0.8,
-              shadowColor: "rgba(34, 211, 238, 0.25)",
-              shadowBlur: 14
+              shadowBlur: 0
             },
             emphasis: {
-              label: { show: true, color: "#e0f2fe", fontSize: 12 },
-              itemStyle: { areaColor: "#1e6fa8", borderColor: "#67e8f9", borderWidth: 1.2 }
+              label: { show: true, color: C.axisLabel, fontSize: 12, fontWeight: "bold" },
+              itemStyle: {
+                areaColor: C.mapEmph,
+                borderColor: C.mapEmphBorder,
+                borderWidth: 1.5,
+                shadowBlur: 14,
+                shadowColor: "rgba(120,120,120,0.35)"
+              }
             },
             select: {
-              label: { show: true, color: "#04101f", fontSize: 12 },
-              itemStyle: { areaColor: "#67e8f9", borderColor: "#e0f2fe", borderWidth: 1.4 }
+              label: { show: true, color: C.mapSelectLabel, fontSize: 12, fontWeight: "bold" },
+              itemStyle: {
+                areaColor: C.mapSelectArea,
+                borderColor: C.mapSelectBorder,
+                borderWidth: 2,
+                shadowBlur: 20,
+                shadowColor: C.mapSelectArea
+              }
             },
             data: values
           }]
@@ -620,6 +1094,7 @@
 
   function loadTrend(school) {
     if (!school) return Promise.resolve();
+    var C = chartTheme();
     setLoading("trendPanel", true);
     return fetchJSON("/api/trend", { school: school })
       .then(function (data) {
@@ -639,12 +1114,12 @@
 
         var option = {
           backgroundColor: "transparent",
-          grid: { left: 58, right: 30, top: 34, bottom: 78 },
+          grid: { left: 58, right: 46, top: 34, bottom: 78 },
           tooltip: {
             trigger: "axis",
-            backgroundColor: "rgba(6, 20, 42, 0.94)",
-            borderColor: "rgba(56, 189, 248, 0.45)",
-            textStyle: { color: "#dbeafe", fontSize: 12 },
+            backgroundColor: C.tooltipBg,
+            borderColor: C.tooltipBorder,
+            textStyle: { color: C.tooltipText, fontSize: 12 },
             formatter: function (items) {
               if (!items || !items.length) return "";
               var idx = items[0].dataIndex;
@@ -659,26 +1134,39 @@
             type: "category",
             boundaryGap: false,
             data: data.years,
-            axisLine: { lineStyle: { color: "rgba(56, 189, 248, 0.35)" } },
-            axisLabel: { color: "#9fb3d1", fontSize: 12 },
+            axisLine: { lineStyle: { color: C.axisLine } },
+            axisLabel: { color: C.axisLabel, fontSize: 12 },
             axisTick: { show: false }
           },
-          yAxis: {
-            type: "value",
-            inverse: true,
-            min: 1,
-            max: yMax,
-            splitNumber: 5,
-            axisLabel: {
-              color: "#9fb3d1",
-              fontSize: 11,
-              showMaxLabel: false,
-              formatter: function (value) {
-                return value >= RANK_PLUS ? "500+" : value;
-              }
+          yAxis: [
+            {
+              type: "value",
+              inverse: true,
+              min: 1,
+              max: yMax,
+              splitNumber: 5,
+              axisLabel: {
+                color: C.axisLabel,
+                fontSize: 11,
+                showMaxLabel: false,
+                formatter: function (value) {
+                  return value >= RANK_PLUS ? "500+" : value;
+                }
+              },
+              splitLine: { lineStyle: { color: C.splitLine, type: "dashed" } }
             },
-            splitLine: { lineStyle: { color: "rgba(56, 189, 248, 0.10)", type: "dashed" } }
-          },
+            {
+              type: "value",
+              inverse: false,
+              min: "dataMin",
+              max: "dataMax",
+              splitNumber: 4,
+              axisLabel: { color: C.lineScore, fontSize: 10 },
+              splitLine: { show: false },
+              name: "总分",
+              nameTextStyle: { color: C.lineScore, fontSize: 10 }
+            }
+          ],
           dataZoom: [
             { type: "inside", start: 0, end: 100 },
             {
@@ -687,44 +1175,63 @@
               bottom: 16,
               start: 0,
               end: 100,
-              borderColor: "rgba(56, 189, 248, 0.25)",
-              backgroundColor: "rgba(8, 24, 48, 0.6)",
-              fillerColor: "rgba(34, 211, 238, 0.18)",
-              handleStyle: { color: "#22d3ee", borderColor: "#22d3ee" },
-              textStyle: { color: "#7c93b5", fontSize: 10 },
+              borderColor: C.sliderBorder,
+              backgroundColor: C.sliderBg,
+              fillerColor: C.sliderFiller,
+              handleStyle: { color: C.sliderHandle, borderColor: C.sliderHandle },
+              textStyle: { color: C.sliderText, fontSize: 10 },
               dataBackground: {
-                lineStyle: { color: "rgba(56, 189, 248, 0.35)" },
-                areaStyle: { color: "rgba(34, 211, 238, 0.10)" }
+                lineStyle: { color: C.sliderFiller },
+                areaStyle: { color: C.marker }
               }
             }
           ],
-          series: [{
-            name: "排名",
-            type: "line",
-            data: ranks,
-            smooth: false,
-            symbol: "circle",
-            symbolSize: 9,
-            lineStyle: { width: 2.4, color: "#22d3ee", shadowColor: "rgba(34, 211, 238, 0.6)", shadowBlur: 12 },
-            itemStyle: { color: "#22d3ee", borderColor: "#0b1b33", borderWidth: 2 },
-            label: {
-              show: true,
-              position: "top",
-              color: "#9fb3d1",
-              fontSize: 10,
-              formatter: function (p) {
-                return isPlus[p.dataIndex] ? "500+" : "";
-              }
+          series: [
+            {
+              name: "排名",
+              type: "line",
+              data: ranks,
+              smooth: false,
+              symbol: "circle",
+              symbolSize: 9,
+              showSymbol: true,
+              lineStyle: { width: 2.8, color: C.lineMain, shadowColor: C.lineMainShadow, shadowBlur: 16, shadowOffsetY: 4 },
+              itemStyle: { color: C.lineMain, borderColor: C.mapSelectArea, borderWidth: 2 },
+              areaStyle: { color: C.lineMain, opacity: 0.15 },
+              label: {
+                show: true,
+                position: "top",
+                color: C.axisLabel,
+                fontSize: 10,
+                formatter: function (p) {
+                  return isPlus[p.dataIndex] ? "500+" : "";
+                }
+              },
+              markLine: {
+                silent: true,
+                symbol: "none",
+                show: hasPlus,
+                lineStyle: { color: C.splitLine, type: "dashed" },
+                label: { color: C.sliderText, fontSize: 10 },
+                data: [{ yAxis: RANK_PLUS, label: { formatter: "500+" } }]
+              },
+              z: 3
             },
-            markLine: {
-              silent: true,
-              symbol: "none",
-              show: hasPlus,
-              lineStyle: { color: "rgba(148, 163, 184, 0.25)", type: "dashed" },
-              label: { color: "#64748b", fontSize: 10 },
-              data: [{ yAxis: RANK_PLUS, label: { formatter: "500+" } }]
+            {
+              name: "总分",
+              type: "line",
+              yAxisIndex: 1,
+              data: scores,
+              smooth: true,
+              symbol: "diamond",
+              symbolSize: 6,
+              showSymbol: true,
+              lineStyle: { width: 1.8, type: "dashed", color: C.lineScore, shadowColor: "rgba(113,113,122,0.3)", shadowBlur: 6 },
+              itemStyle: { color: C.lineScore, borderColor: C.mapSelectArea, borderWidth: 1.5 },
+              label: { show: false },
+              z: 2
             }
-          }]
+          ]
         };
         trendChart.setOption(option, true);
         $("trendPanel").querySelector("h2").textContent = "排名趋势 · " + state.school;
@@ -732,6 +1239,7 @@
         $("trendMeta").textContent = data.years[last] + " 年：" +
           "第 " + rankText(data.ranks[last]) + " 名" +
           (scores[last] === null || scores[last] === undefined ? "" : " · 总分 " + scores[last]);
+        renderScoreStrip(data);
       })
       .catch(function (err) {
         showError("趋势数据加载失败：" + err.message, function () { loadTrend(state.school); });
@@ -742,23 +1250,26 @@
   }
 
   // ------------------------------------------------------------------ 省份下钻
-  var PROVINCE_COLORS = {
-    "985": "#f5b942",
-    "211": "#5b9cf5",
-    "双一流": "#a78bfa",
-    "普通": "#3f5b7a"
-  };
+  function provinceColors(C) {
+    return {
+      "985": C.provColors[0],
+      "211": C.provColors[1],
+      "双一流": C.provColors[2],
+      "普通": C.provColors[3]
+    };
+  }
 
-  function selectProvince(name) {
+  function selectProvince(name, skipMajors) {
     if (!name) return;
     state.province = name;
     updateUrl();
     loadProvince(name);
-    loadMajors([name], [], name + " · 全部年份");
+    if (!skipMajors) loadMajors([name], [], name + " · 全部年份");
   }
 
   function loadProvince(name) {
     if (!name) return Promise.resolve();
+    var C = chartTheme();
     setLoading("provincePanel", true);
     return fetchJSON("/api/province", { province: name, year: state.year })
       .then(function (data) {
@@ -767,20 +1278,21 @@
         $("provinceTitle").textContent = "省份详情 · " + name;
         $("provinceMeta").textContent = data.year + " 年 · " + total + " 所";
 
+        var colors = provinceColors(C);
         var pieData = stats.map(function (item) {
           return {
             name: item.level,
             value: item.count,
-            itemStyle: { color: PROVINCE_COLORS[item.level] || "#64748b" }
+            itemStyle: { color: colors[item.level] || C.legend }
           };
         });
         provinceChart.setOption({
           backgroundColor: "transparent",
           tooltip: {
             trigger: "item",
-            backgroundColor: "rgba(6, 20, 42, 0.94)",
-            borderColor: "rgba(56, 189, 248, 0.45)",
-            textStyle: { color: "#dbeafe", fontSize: 12 },
+            backgroundColor: C.tooltipBg,
+            borderColor: C.tooltipBorder,
+            textStyle: { color: C.tooltipText, fontSize: 12 },
             formatter: "{b}：{c} 所（{d}%）"
           },
           legend: {
@@ -789,20 +1301,26 @@
             itemWidth: 8,
             itemHeight: 8,
             itemGap: 10,
-            textStyle: { color: "#9fb3d1", fontSize: 11 }
+            textStyle: { color: C.legend, fontSize: 11 }
           },
           series: [{
             type: "pie",
             radius: ["42%", "66%"],
             center: ["50%", "44%"],
             avoidLabelOverlap: true,
-            itemStyle: { borderColor: "#081428", borderWidth: 2 },
+            itemStyle: { borderColor: C.pieBorder, borderWidth: 2, borderRadius: 3 },
+            emphasis: {
+              scale: true,
+              scaleSize: 8,
+              itemStyle: { shadowBlur: 18, shadowColor: "rgba(150,150,150,0.35)" },
+              label: { fontSize: 12, fontWeight: "bold" }
+            },
             label: {
-              color: "#cbd5e1",
+              color: C.pieLabel,
               fontSize: 10,
               formatter: function (p) { return p.name + "\n" + p.value; }
             },
-            labelLine: { length: 5, length2: 6, lineStyle: { color: "rgba(148,163,184,0.4)" } },
+            labelLine: { length: 5, length2: 6, lineStyle: { color: C.pieLabelLine } },
             data: pieData
           }]
         }, true);
@@ -826,25 +1344,37 @@
       list.innerHTML = '<div class="empty-tip">该年份暂无学校数据</div>';
       return;
     }
-    schools.slice(0, 80).forEach(function (school) {
+    schools.slice(0, 80).forEach(function (school, idx) {
       var row = document.createElement("div");
       row.className = "school-item";
       row.title = school.name;
+      row.style.animationDelay = Math.min(idx, 20) * 25 + "ms";
+
+      var medal = document.createElement("span");
+      if (idx === 0) { medal.className = "school-medal m1"; medal.textContent = "1"; }
+      else if (idx === 1) { medal.className = "school-medal m2"; medal.textContent = "2"; }
+      else if (idx === 2) { medal.className = "school-medal m3"; medal.textContent = "3"; }
+      else { medal.className = "school-medal mn"; medal.textContent = idx + 1; }
 
       var rank = document.createElement("span");
       rank.className = "school-rank";
-      rank.textContent = school.rankDisplay || "-";
+      rank.textContent = "#" + (school.rankDisplay || "-");
 
       var name = document.createElement("span");
       name.className = "school-name";
       name.textContent = school.name;
 
+      var score = document.createElement("span");
+      score.className = "school-score";
+      score.textContent = (school.score === null || school.score === undefined) ? "--" : school.score;
+
       var level = document.createElement("span");
       level.className = "school-level lv-" + school.level;
       level.textContent = school.level;
 
-      row.appendChild(rank);
+      row.appendChild(medal);
       row.appendChild(name);
+      row.appendChild(score);
       row.appendChild(level);
       row.addEventListener("click", function () {
         $("schoolInput").value = school.name;
@@ -855,6 +1385,9 @@
   }
 
   // ------------------------------------------------------------------ 招生热力图
+  /* 单击格子会同时触发 1 格框选：用时间戳标志位去重，click 走逐年视图，框选走汇总视图 */
+  var lastHeatCellClick = { province: null, year: null, time: 0 };
+
   function attachHeatmapEvents() {
     heatmapChart.on("brushSelected", function (params) {
       var batch = (params.batch && params.batch[0]) || null;
@@ -894,6 +1427,16 @@
       var provinceList = Object.keys(provinces);
       var yearList = Object.keys(years);
       if (!provinceList.length && !yearList.length) return;
+
+      // 与刚发生的单击同格 → 视为单击，清掉框选视觉态，不覆盖逐年视图
+      if (provinceList.length === 1 && yearList.length === 1 &&
+          lastHeatCellClick.province === provinceList[0] &&
+          String(lastHeatCellClick.year) === String(yearList[0]) &&
+          Date.now() - lastHeatCellClick.time < 800) {
+        heatmapChart.dispatchAction({ type: "brush", areas: [] });
+        return;
+      }
+
       var label = "框选 " + (yearList.length ? yearList.join("/") : "全部年份") +
         " · " + (provinceList.length ? provinceList.join("/") : "全部省份");
       loadMajors(provinceList, yearList, label);
@@ -902,17 +1445,25 @@
     heatmapChart.on("click", function (params) {
       if (!params.value) return;
       var province = heatmapProvinces[params.value[0]];
-      if (province) selectProvince(province);
+      var year = heatmapYears[params.value[1]];
+      if (!province) return;
+      lastHeatCellClick = { province: province, year: year, time: Date.now() };
+      /* 点击格子 → 右侧专业表显示该省 2021-2024 逐年招生；同时联动省份详情 */
+      selectProvince(province, true);
+      var yearsDesc = heatmapYears.slice().sort(function (a, b) { return b - a; });
+      loadMajorsByYear(province, yearsDesc,
+        "点击 " + province + " · " + year + " 年格 · " +
+        yearsDesc[yearsDesc.length - 1] + "-" + yearsDesc[0] + " 逐年招生", year);
     });
   }
 
   function loadHeatmap() {
+    var C = chartTheme();
     setLoading("heatmapPanel", true);
     return fetchJSON("/api/heatmap")
       .then(function (data) {
         var rawValues = data.values || [];
         if (data.hasData) {
-          // 只展示有数据的省份/年份，避免大面积空白
           var keepProv = [];
           var keepYear = [];
           rawValues.forEach(function (v) {
@@ -949,7 +1500,6 @@
           panel.appendChild(empty);
         }
 
-
         var maxValue = heatmapData.reduce(function (max, item) {
           return Math.max(max, item[2]);
         }, 0);
@@ -959,9 +1509,9 @@
           grid: { left: 50, right: 20, top: 44, bottom: 30 },
           tooltip: {
             position: "top",
-            backgroundColor: "rgba(6, 20, 42, 0.94)",
-            borderColor: "rgba(56, 189, 248, 0.45)",
-            textStyle: { color: "#dbeafe", fontSize: 12 },
+            backgroundColor: C.tooltipBg,
+            borderColor: C.tooltipBorder,
+            textStyle: { color: C.tooltipText, fontSize: 12 },
             formatter: function (p) {
               return heatmapProvinces[p.value[0]] + " · " + heatmapYears[p.value[1]] + " 年" +
                 "<br/>招生 " + p.value[2] + " 人";
@@ -970,7 +1520,7 @@
           toolbox: {
             right: 2,
             top: 2,
-            iconStyle: { borderColor: "#7c93b5" },
+            iconStyle: { borderColor: C.toolbox },
             feature: {
               brush: {
                 type: ["rect", "clear"],
@@ -990,38 +1540,48 @@
             show: false,
             min: 0,
             max: maxValue || 1,
-            inRange: { color: ["#0b2545", "#12457a", "#1179a8", "#22d3ee"] }
+            inRange: { color: C.heatRange }
           },
           xAxis: {
             type: "category",
             data: heatmapProvinces,
-            axisLine: { lineStyle: { color: "rgba(56, 189, 248, 0.3)" } },
+            axisLine: { lineStyle: { color: C.axisLine } },
             axisTick: { show: false },
-            axisLabel: { color: "#9fb3d1", fontSize: 11, interval: 0 }
+            axisLabel: { color: C.axisLabel, fontSize: 11, interval: 0 }
           },
           yAxis: {
             type: "category",
             data: heatmapYears,
-            axisLine: { lineStyle: { color: "rgba(56, 189, 248, 0.3)" } },
+            axisLine: { lineStyle: { color: C.axisLine } },
             axisTick: { show: false },
-            axisLabel: { color: "#9fb3d1", fontSize: 11 }
+            axisLabel: { color: C.axisLabel, fontSize: 11 }
           },
           series: [{
             type: "heatmap",
-            data: heatmapData,
+            /* 按数值比例动态分配文字色：浅格深字、深格白字（暗色主题反向），保证双主题可读 */
+            data: heatmapData.map(function (item) {
+              var hi = maxValue ? (item[2] / maxValue) >= 0.6 : false;
+              return {
+                value: item,
+                label: {
+                  color: hi ? C.heatLabelHigh : C.heatLabel,
+                  textBorderColor: hi ? C.heatLabelHighBorder : C.heatLabelBorder
+                }
+              };
+            }),
             label: {
               show: true,
               fontSize: 10,
-              color: "#e0f2fe",
-              textBorderColor: "rgba(4, 16, 31, 0.55)",
+              color: C.heatLabel,
+              textBorderColor: C.heatLabelBorder,
               textBorderWidth: 2,
               formatter: function (p) {
                 return p.value[2] >= 1000 ? (p.value[2] / 1000).toFixed(1) + "k" : p.value[2];
               }
             },
-            itemStyle: { borderColor: "rgba(5, 14, 30, 0.65)", borderWidth: 1 },
+            itemStyle: { borderColor: C.heatBorder, borderWidth: 1, borderRadius: 4 },
             emphasis: {
-              itemStyle: { borderColor: "#67e8f9", borderWidth: 1.5 }
+              itemStyle: { borderColor: C.heatEmph, borderWidth: 1.5, shadowBlur: 8, shadowColor: C.heatEmph }
             }
           }]
         }, true);
@@ -1081,6 +1641,59 @@
       .finally(function () {
         setLoading("majorsPanel", false);
       });
+  }
+
+  /* 逐年分组加载：点击热力图格子后，专业表按年份倒序分组显示该省各年招生；activeYear 高亮点击的那格年份 */
+  function loadMajorsByYear(province, years, label, activeYear) {
+    setLoading("majorsPanel", true);
+    return Promise.all(years.map(function (y) {
+      return fetchJSON("/api/majors", { province: province, year: y, limit: 8 })
+        .then(function (data) { return { year: y, data: data }; });
+    })).then(function (results) {
+      var body = $("majorsBody");
+      body.innerHTML = "";
+      var any = false;
+      results.forEach(function (r) {
+        var hdr = document.createElement("tr");
+        hdr.className = "year-group" + (String(r.year) === String(activeYear) ? " active" : "");
+        var htd = document.createElement("td");
+        htd.colSpan = 3;
+        htd.textContent = r.year + " 年";
+        hdr.appendChild(htd);
+        body.appendChild(hdr);
+        var rows = (r.data && r.data.hasData && r.data.rows) || [];
+        if (!rows.length) {
+          var emptyTr = document.createElement("tr");
+          var emptyTd = document.createElement("td");
+          emptyTd.colSpan = 3;
+          emptyTd.className = "empty";
+          emptyTd.textContent = "暂无招生数据";
+          emptyTr.appendChild(emptyTd);
+          body.appendChild(emptyTr);
+          return;
+        }
+        any = true;
+        rows.forEach(function (row) {
+          var tr = document.createElement("tr");
+          var major = document.createElement("td");
+          major.textContent = row.major;
+          var total = document.createElement("td");
+          total.className = "num";
+          total.textContent = row.total;
+          var schools = document.createElement("td");
+          schools.textContent = row.schools;
+          tr.appendChild(major);
+          tr.appendChild(total);
+          tr.appendChild(schools);
+          body.appendChild(tr);
+        });
+      });
+      $("majorsMeta").textContent = any ? label : (label + " · 全部年份暂无数据");
+    }).catch(function (err) {
+      $("majorsBody").innerHTML = '<tr><td colspan="3" class="empty">' + err.message + '</td></tr>';
+    }).finally(function () {
+      setLoading("majorsPanel", false);
+    });
   }
 
   // ------------------------------------------------------------------ 搜索
@@ -1144,6 +1757,10 @@
       loadHeatmap();
       toast("已刷新数据");
     });
+
+    $("themeToggle").addEventListener("click", toggleTheme);
+    /* 初始化主题按钮文案（data-theme 由 head 预加载脚本设置） */
+    $("themeLabel").textContent = currentTheme() === "light" ? "亮色" : "暗色";
 
     $("searchBtn").addEventListener("click", function () {
       var value = $("schoolInput").value.trim();
