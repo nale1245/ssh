@@ -440,22 +440,6 @@
   }
   .school-search { display: flex; gap: var(--space-2); align-items: center; min-width: 0; flex: 1; }
   .school-search input { flex: 1; min-width: 0; padding: var(--space-2) 10px; }
-  /* ---- 专业表逐年分组头 ---- */
-  .majors-table tr.year-group td {
-    position: sticky; top: 25px; z-index: 1;
-    background: var(--card-solid);
-    color: var(--accent-majors);
-    font-family: var(--font-num); font-weight: 700; font-size: 11px; letter-spacing: 1px;
-    padding: 4px 8px; border-bottom: 1px solid var(--border-strong);
-  }
-  .majors-table tr.year-group.active td {
-    background: color-mix(in oklch, var(--accent-majors) 18%, var(--card-solid));
-    border-left: 3px solid var(--accent-majors);
-  }
-  .majors-table tr.year-group.active td::after {
-    content: " · 点击格";
-    font-weight: 400; letter-spacing: 0; opacity: 0.75;
-  }
   footer {
     display: flex; align-items: center; gap: var(--space-4);
     padding: var(--space-1) var(--space-3);
@@ -634,7 +618,7 @@
         <span class="meta" id="heatmapMeta">年份 × 省份 · 招生人数</span>
       </div>
       <div class="chart" id="heatmapChart" role="img" aria-label="招生人数热力图"></div>
-      <div class="hint">颜色越亮招生越多；单击格子 → 该省逐年招生；拖动框选 → 区域汇总联动专业表</div>
+      <div class="hint">颜色越亮招生越多；单击格子 → 该省该年招生；拖动框选 → 区域汇总联动专业表</div>
     </section>
 
     <section class="panel" id="majorsPanel" aria-label="专业招生统计">
@@ -1385,7 +1369,7 @@
   }
 
   // ------------------------------------------------------------------ 招生热力图
-  /* 单击格子会同时触发 1 格框选：用时间戳标志位去重，click 走逐年视图，框选走汇总视图 */
+  /* 单击格子会同时触发 1 格框选：用时间戳标志位去重，click 走该省该年视图，框选走汇总视图 */
   var lastHeatCellClick = { province: null, year: null, time: 0 };
 
   function attachHeatmapEvents() {
@@ -1428,7 +1412,7 @@
       var yearList = Object.keys(years);
       if (!provinceList.length && !yearList.length) return;
 
-      // 与刚发生的单击同格 → 视为单击，清掉框选视觉态，不覆盖逐年视图
+      // 与刚发生的单击同格 → 视为单击，清掉框选视觉态，不覆盖单击的该省该年视图
       if (provinceList.length === 1 && yearList.length === 1 &&
           lastHeatCellClick.province === provinceList[0] &&
           String(lastHeatCellClick.year) === String(yearList[0]) &&
@@ -1448,12 +1432,9 @@
       var year = heatmapYears[params.value[1]];
       if (!province) return;
       lastHeatCellClick = { province: province, year: year, time: Date.now() };
-      /* 点击格子 → 右侧专业表显示该省 2021-2024 逐年招生；同时联动省份详情 */
+      /* 点击格子 → 右侧专业表显示该省该年招生；同时联动省份详情 */
       selectProvince(province, true);
-      var yearsDesc = heatmapYears.slice().sort(function (a, b) { return b - a; });
-      loadMajorsByYear(province, yearsDesc,
-        "点击 " + province + " · " + year + " 年格 · " +
-        yearsDesc[yearsDesc.length - 1] + "-" + yearsDesc[0] + " 逐年招生", year);
+      loadMajors([province], [year], "点击 " + province + " · " + year + " 年");
     });
   }
 
@@ -1641,59 +1622,6 @@
       .finally(function () {
         setLoading("majorsPanel", false);
       });
-  }
-
-  /* 逐年分组加载：点击热力图格子后，专业表按年份倒序分组显示该省各年招生；activeYear 高亮点击的那格年份 */
-  function loadMajorsByYear(province, years, label, activeYear) {
-    setLoading("majorsPanel", true);
-    return Promise.all(years.map(function (y) {
-      return fetchJSON("/api/majors", { province: province, year: y, limit: 8 })
-        .then(function (data) { return { year: y, data: data }; });
-    })).then(function (results) {
-      var body = $("majorsBody");
-      body.innerHTML = "";
-      var any = false;
-      results.forEach(function (r) {
-        var hdr = document.createElement("tr");
-        hdr.className = "year-group" + (String(r.year) === String(activeYear) ? " active" : "");
-        var htd = document.createElement("td");
-        htd.colSpan = 3;
-        htd.textContent = r.year + " 年";
-        hdr.appendChild(htd);
-        body.appendChild(hdr);
-        var rows = (r.data && r.data.hasData && r.data.rows) || [];
-        if (!rows.length) {
-          var emptyTr = document.createElement("tr");
-          var emptyTd = document.createElement("td");
-          emptyTd.colSpan = 3;
-          emptyTd.className = "empty";
-          emptyTd.textContent = "暂无招生数据";
-          emptyTr.appendChild(emptyTd);
-          body.appendChild(emptyTr);
-          return;
-        }
-        any = true;
-        rows.forEach(function (row) {
-          var tr = document.createElement("tr");
-          var major = document.createElement("td");
-          major.textContent = row.major;
-          var total = document.createElement("td");
-          total.className = "num";
-          total.textContent = row.total;
-          var schools = document.createElement("td");
-          schools.textContent = row.schools;
-          tr.appendChild(major);
-          tr.appendChild(total);
-          tr.appendChild(schools);
-          body.appendChild(tr);
-        });
-      });
-      $("majorsMeta").textContent = any ? label : (label + " · 全部年份暂无数据");
-    }).catch(function (err) {
-      $("majorsBody").innerHTML = '<tr><td colspan="3" class="empty">' + err.message + '</td></tr>';
-    }).finally(function () {
-      setLoading("majorsPanel", false);
-    });
   }
 
   // ------------------------------------------------------------------ 搜索
