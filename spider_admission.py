@@ -242,10 +242,15 @@ def main(argv=None) -> int:
     parser.add_argument("--rate", type=float, default=0.8, help="请求间隔秒")
     parser.add_argument("--min-rows", type=int, default=0, help="达到行数后可提前结束")
     parser.add_argument("--resume", action="store_true", help="跳过已采集组合")
+    parser.add_argument("--only-school-provinces", default="",
+                        help="只采集这些学校所在省的学校，逗号分隔，如 宁夏,新疆,西藏,青海")
     args = parser.parse_args(argv)
 
     setup_logging()
     schools = load_schools(args.limit, args.selection, args.rank_year, args.top_per_province)
+    if args.only_school_provinces:
+        wanted = {p.strip() for p in args.only_school_provinces.split(",") if p.strip()}
+        schools = [s for s in schools if s.get("province") in wanted]
     provinces = [p.strip() for p in args.provinces.split(",") if p.strip()]
     years = [int(y) for y in args.years.split(",") if y.strip()]
     forced_types = [int(t) for t in args.types.split(",") if t.strip()]
