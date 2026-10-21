@@ -696,14 +696,14 @@
       <div class="majors-body">
         <table class="majors-table">
           <thead>
-            <tr><th>专业</th><th>招生人数</th><th>学校数</th></tr>
+            <tr><th>专业</th><th>招生人数</th><th title="区域视图为学校数，学校视图为年份数">覆盖</th></tr>
           </thead>
           <tbody id="majorsBody">
             <tr><td colspan="3" class="empty">框选热力图区域后显示</td></tr>
           </tbody>
         </table>
       </div>
-      <div class="hint">数据来源：阳光高考招生计划</div>
+      <div class="hint">区域视图显示学校数；点击省份学校/搜索学校后显示该校各专业招生（覆盖列变为年份数）</div>
     </section>
   </section>
 
@@ -1463,6 +1463,7 @@
       row.addEventListener("click", function () {
         $("schoolInput").value = school.name;
         loadTrend(school.name).then(updateUrl);
+        loadHomeSchoolMajors(school.name);
       });
       row.addEventListener("dblclick", function () {
         state.school = school.name;
@@ -1648,6 +1649,53 @@
       })
       .finally(function () {
         setLoading("heatmapPanel", false);
+      });
+  }
+
+  function loadHomeSchoolMajors(school) {
+    if (!school) return Promise.resolve();
+    setLoading("majorsPanel", true);
+    return fetchJSON("/api/school_majors", { school: school, limit: 500 })
+      .then(function (data) {
+        var body = $("majorsBody");
+        body.innerHTML = "";
+        if (!data.hasData) {
+          body.innerHTML = '<tr><td colspan="3" class="empty">该校暂无招生数据</td></tr>';
+          $("majorsMeta").textContent = school + " · 暂无数据";
+          return;
+        }
+        var byMajor = {};
+        var years = {};
+        data.rows.forEach(function (row) {
+          byMajor[row.major] = (byMajor[row.major] || 0) + row.total;
+          years[row.year] = true;
+        });
+        var rows = Object.keys(byMajor).map(function (major) {
+          return { major: major, total: byMajor[major] };
+        }).sort(function (a, b) { return b.total - a.total; }).slice(0, 20);
+        rows.forEach(function (row) {
+          var tr = document.createElement("tr");
+          var major = document.createElement("td");
+          major.textContent = row.major;
+          var total = document.createElement("td");
+          total.className = "num";
+          total.textContent = row.total;
+          var cover = document.createElement("td");
+          cover.textContent = Object.keys(years).length + " 年";
+          tr.appendChild(major);
+          tr.appendChild(total);
+          tr.appendChild(cover);
+          body.appendChild(tr);
+        });
+        var yearList = Object.keys(years).sort();
+        $("majorsMeta").textContent = school + " · " + yearList[0] + "-" +
+          yearList[yearList.length - 1] + " · " + rows.length + " 个专业";
+      })
+      .catch(function (err) {
+        $("majorsBody").innerHTML = '<tr><td colspan="3" class="empty">' + err.message + '</td></tr>';
+      })
+      .finally(function () {
+        setLoading("majorsPanel", false);
       });
   }
 
@@ -1925,7 +1973,7 @@
       if (!data.hasData) { el.innerHTML = '<div class="empty-tip">该省份/年份暂无招生数据</div>'; meta.textContent = "暂无数据"; return; }
       var table = document.createElement("table");
       table.className = "majors-table";
-      table.innerHTML = "<thead><tr><th>专业</th><th>招生人数</th><th>学校数</th></tr></thead>";
+      table.innerHTML = '<thead><tr><th>专业</th><th>招生人数</th><th>覆盖</th></tr></thead>';
       var tbody = document.createElement("tbody");
       data.rows.forEach(function (row) {
         var tr = document.createElement("tr");
@@ -2085,12 +2133,16 @@
       var value = $("schoolInput").value.trim();
       if (!value) { toast("请输入学校名"); return; }
       loadTrend(value).then(updateUrl);
+      loadHomeSchoolMajors(value);
     });
 
     $("schoolInput").addEventListener("keydown", function (e) {
       if (e.key === "Enter") {
         var value = $("schoolInput").value.trim();
-        if (value) loadTrend(value).then(updateUrl);
+        if (value) {
+          loadTrend(value).then(updateUrl);
+          loadHomeSchoolMajors(value);
+        }
       }
     });
 
