@@ -413,6 +413,82 @@ def api_majors():
 
 
 # --------------------------------------------------------------------------- #
+# 辅助：招生筛选元数据（年份/省份/学校下拉）
+# --------------------------------------------------------------------------- #
+@app.get("/api/admission_meta")
+def api_admission_meta():
+    years = [int(r["year"]) for r in query_all(
+        "SELECT DISTINCT year FROM admission ORDER BY year")]
+    provinces = [
+        {"province": r["province"], "total": int(r["total"] or 0), "schools": int(r["schools"] or 0)}
+        for r in query_all(
+            "SELECT province, SUM(`count`) AS total, COUNT(DISTINCT univ_id) AS schools "
+            "FROM admission GROUP BY province ORDER BY total DESC")
+    ]
+    schools = [
+        {"id": int(r["id"]), "name": r["name"], "total": int(r["total"] or 0),
+         "majors": int(r["majors"] or 0)}
+        for r in query_all(
+            "SELECT u.id, u.name, SUM(a.`count`) AS total, COUNT(DISTINCT a.major) AS majors "
+            "FROM admission a JOIN university u ON u.id = a.univ_id "
+            "GROUP BY u.id, u.name ORDER BY total DESC")
+    ]
+    return ok({"years": years, "provinces": provinces, "schools": schools,
+               "hasData": bool(years)})
+
+
+# --------------------------------------------------------------------------- #
+# 辅助：某所大学的招生专业明细（大学详情 / 学校联动）
+# --------------------------------------------------------------------------- #
+@app.get("/api/school_majors")
+def api_school_majors():
+    school = require_param("school")
+    year = parse_year()
+    province = (request.args.get("province") or "").strip()
+    try:
+        limit = max(1, min(int(request.args.get("limit", "200")), 500))
+    except ValueError:
+        raise ApiError(1001, "参数 limit 必须为整数")
+
+    rows = query_all(
+        "SELECT id, name, province, level FROM university WHERE name = %s", (school,))
+    if not rows:
+        rows = query_all(
+            "SELECT id, name, province, level FROM university WHERE name LIKE %s LIMIT 1",
+            ("%" + school + "%",))
+    if not rows:
+        raise ApiError(1002, "未找到学校：%s" % school)
+    univ = rows[0]
+
+    where = ["univ_id = %s"]
+    params: list = [univ["id"]]
+    if year is not None:
+        where.append("year = %s")
+        params.append(year)
+    if province:
+        where.append("province = %s")
+        params.append(province)
+    params.append(limit)
+
+    detail = query_all(
+        "SELECT year, province, major, SUM(`count`) AS total FROM admission "
+        "WHERE " + " AND ".join(where) + " "
+        "GROUP BY year, province, major "
+        "ORDER BY year DESC, province, total DESC LIMIT %s", tuple(params))
+
+    return ok({
+        "school": {"id": int(univ["id"]), "name": univ["name"],
+                   "province": univ["province"], "level": univ["level"]},
+        "rows": [
+            {"year": int(r["year"]), "province": r["province"],
+             "major": r["major"], "total": int(r["total"] or 0)}
+            for r in detail
+        ],
+        "hasData": bool(detail),
+    })
+
+
+# --------------------------------------------------------------------------- #
 # 健康检查（辅助，不在 6 个业务接口内）
 # --------------------------------------------------------------------------- #
 @app.get("/api/health")

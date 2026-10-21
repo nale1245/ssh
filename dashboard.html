@@ -475,6 +475,67 @@
     0%, 100% { opacity: 1; }
     50%      { opacity: 0.55; }
   }
+  /* ---- 主页热力图分页 ---- */
+  .heat-pager { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .heat-pager button {
+    width: 26px; height: 26px; padding: 0; display: grid; place-items: center;
+    font-size: 15px; line-height: 1; border-radius: 6px;
+    background: var(--secondary); border: 1px solid var(--border); color: var(--foreground);
+  }
+  .heat-pager button:hover { border-color: var(--primary); color: var(--primary); }
+  .heat-pager span { font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; min-width: 38px; text-align: center; }
+  /* ---- 详情页 ---- */
+  .detail-page {
+    position: fixed; inset: 0; z-index: 60; display: none;
+    grid-template-rows: auto auto 1fr; gap: var(--space-3);
+    padding: var(--space-3) var(--space-4) var(--space-2);
+    background: var(--background); color: var(--foreground);
+  }
+  .detail-page.show { display: grid; }
+  .detail-head {
+    display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--card); box-shadow: var(--shadow-1);
+  }
+  .detail-head h2 { margin: 0; font-size: 19px; letter-spacing: 1px; }
+  .detail-filters { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-left: auto; }
+  .detail-filters label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-foreground); }
+  .detail-filters select, .detail-filters input { padding: 6px 10px; font-size: 12px; min-width: 110px; }
+  .detail-filters button { padding: 7px 14px; font-size: 12px; }
+  .detail-tabs { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+  .detail-tabs button {
+    position: relative; padding: 7px 16px; font-size: 13px; border-radius: 999px;
+    background: var(--secondary); border: 1px solid var(--border); color: var(--muted-foreground);
+  }
+  .detail-tabs button.active { color: var(--primary-foreground); background: var(--primary); border-color: var(--primary); }
+  .detail-tabs button .dirty-dot {
+    position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--primary); box-shadow: 0 0 6px var(--primary);
+  }
+  .detail-body { display: grid; gap: var(--space-3); min-height: 0; grid-template-columns: 1fr 1fr; }
+  .detail-body.single { grid-template-columns: 1fr; }
+  .detail-panel {
+    display: grid; grid-template-rows: auto 1fr auto; min-height: 0;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--card); box-shadow: var(--shadow-1); padding: var(--space-2) var(--space-3);
+  }
+  .detail-panel > .dp-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding-bottom: var(--space-2); border-bottom: 1px solid var(--border); }
+  .detail-panel h3 { margin: 0; font-size: 14px; letter-spacing: 0.5px; }
+  .detail-panel .dp-meta { font-size: 11px; color: var(--muted-foreground); }
+  .detail-panel .dp-chart { min-height: 0; width: 100%; height: 100%; }
+  .detail-panel .dp-body { min-height: 0; overflow: auto; }
+  .detail-panel .dp-hint { font-size: 11px; color: var(--muted-foreground); padding-top: 4px; }
+  .chart-picker {
+    position: fixed; right: 24px; top: 78px; z-index: 65; width: 240px;
+    padding: var(--space-3); border-radius: var(--radius); border: 1px solid var(--border-strong);
+    background: var(--card-solid); box-shadow: var(--shadow-2); display: none;
+  }
+  .chart-picker.show { display: block; }
+  .chart-picker h4 { margin: 0 0 var(--space-2); font-size: 13px; }
+  .chart-picker label { display: flex; align-items: center; gap: 8px; padding: 6px 4px; font-size: 13px; cursor: pointer; }
+  .chart-picker input { accent-color: var(--primary); }
+  .chart-picker .cp-note { font-size: 11px; color: var(--muted-foreground); margin-top: var(--space-2); line-height: 1.6; }
   .toast {
     position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%) translateY(12px);
     padding: 10px 18px; font-size: 13px; border-radius: var(--radius-sm);
@@ -544,6 +605,7 @@
         <svg class="ico-sun" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
         <span id="themeLabel">主题</span>
       </button>
+      <button id="detailBtn" type="button" class="primary">招生详情</button>
       <button id="reloadBtn" type="button">刷新数据</button>
     </div>
   </header>
@@ -607,7 +669,7 @@
           <div class="empty-tip">点击左侧地图中的省份查看</div>
         </div>
       </div>
-      <div class="hint">饼图：985 / 211 / 双一流 / 普通；点击学校行可切换趋势</div>
+      <div class="hint">饼图：985 / 211 / 双一流 / 普通；单击学校行看趋势，双击查看该校招生详情</div>
     </section>
   </main>
 
@@ -615,6 +677,11 @@
     <section class="panel" id="heatmapPanel" aria-label="招生热力图">
       <div class="panel-head">
         <h2>招生热力图</h2>
+        <div class="heat-pager">
+          <button id="heatPrev" type="button" aria-label="上一页省份">‹</button>
+          <span id="heatPageLabel">1/1</span>
+          <button id="heatNext" type="button" aria-label="下一页省份">›</button>
+        </div>
         <span class="meta" id="heatmapMeta">年份 × 省份 · 招生人数</span>
       </div>
       <div class="chart" id="heatmapChart" role="img" aria-label="招生人数热力图"></div>
@@ -647,6 +714,33 @@
     <span id="clock" role="timer" aria-live="off"></span>
   </footer>
 </div>
+<!-- 招生详情页 -->
+<section class="detail-page" id="detailPage" aria-hidden="true">
+  <div class="detail-head">
+    <button id="detailBack" type="button">← 返回总览</button>
+    <h2>招生详情</h2>
+    <div class="detail-filters">
+      <label>年份<select id="dYear"></select></label>
+      <label>省份<select id="dProvince"></select></label>
+      <label>学校<select id="dSchool"></select></label>
+      <button id="dApply" class="primary" type="button">应用筛选</button>
+      <button id="dPick" type="button">选择图表</button>
+    </div>
+  </div>
+  <div class="detail-tabs" id="detailTabs"></div>
+  <div class="detail-body" id="detailBody"></div>
+</section>
+
+<div class="chart-picker" id="chartPicker">
+  <h4>详情页图表（每 2 个一组）</h4>
+  <label><input type="checkbox" value="heatmap" checked> 招生热力图</label>
+  <label><input type="checkbox" value="region" checked> 区域专业招生</label>
+  <label><input type="checkbox" value="school"> 学校专业招生</label>
+  <label><input type="checkbox" value="trend"> 排名趋势</label>
+  <p class="cp-note">勾选后自动两两分组为标签页；同组两图双向联动，隐藏标签页会标记变化。</p>
+  <button id="cpApply" class="primary" type="button">生成详情页</button>
+</div>
+
 <div class="toast" id="toast" role="status"></div>
 <div class="error-banner" id="errorBanner" role="alert"><span id="errorText"></span><button id="retryBtn" type="button">重试</button></div>
 
@@ -665,6 +759,12 @@
   var heatmapData = [];
   var heatmapYears = [];
   var heatmapProvinces = [];
+  var heatAll = null;
+  var heatPage = 0;
+  var HEAT_PAGE_SIZE = 4;
+  var detailState = { year: 2026, province: "广东", school: "清华大学", charts: ["heatmap", "region"], activeTab: 0 };
+  var detailChartInstances = {};
+  var detailDirty = {};
   var toastTimer = null;
   var searchTimer = null;
   var mapReady = false;
@@ -1364,6 +1464,11 @@
         $("schoolInput").value = school.name;
         loadTrend(school.name).then(updateUrl);
       });
+      row.addEventListener("dblclick", function () {
+        state.school = school.name;
+        detailState.charts = ["school", "trend"];
+        openDetail();
+      });
       list.appendChild(row);
     });
   }
@@ -1438,39 +1543,94 @@
     });
   }
 
-  function loadHeatmap() {
+  function renderHomeHeatPage(page) {
+    if (!heatAll) return;
     var C = chartTheme();
+    var total = heatAll.provinces.length;
+    var pages = Math.max(1, Math.ceil(total / HEAT_PAGE_SIZE));
+    heatPage = Math.max(0, Math.min(page, pages - 1));
+    var startIdx = heatPage * HEAT_PAGE_SIZE;
+    var provs = heatAll.provinces.slice(startIdx, startIdx + HEAT_PAGE_SIZE);
+    var index = {};
+    provs.forEach(function (name, i) { index[name] = i; });
+    heatmapProvinces = provs;
+    heatmapYears = heatAll.years.slice();
+    heatmapData = [];
+    heatAll.values.forEach(function (v) {
+      var name = heatAll.provinces[v[0]];
+      if (index[name] === undefined) return;
+      heatmapData.push([index[name], v[1], v[2]]);
+    });
+
+    var maxValue = heatmapData.reduce(function (m, item) { return Math.max(m, item[2]); }, 0);
+    $("heatPageLabel").textContent = (heatPage + 1) + "/" + pages;
+    $("heatmapMeta").textContent = heatmapProvinces.length + " 省 · " + heatmapYears.length + " 年 · 第 " + (heatPage + 1) + " 页";
+
+    heatmapChart.setOption({
+      backgroundColor: "transparent",
+      grid: { left: 50, right: 20, top: 44, bottom: 30 },
+      tooltip: {
+        position: "top", backgroundColor: C.tooltipBg, borderColor: C.tooltipBorder,
+        textStyle: { color: C.tooltipText, fontSize: 12 },
+        formatter: function (p) {
+          return heatmapProvinces[p.value[0]] + " · " + heatmapYears[p.value[1]] + " 年" +
+            "<br/>招生 " + p.value[2] + " 人";
+        }
+      },
+      toolbox: { right: 2, top: 2, iconStyle: { borderColor: C.toolbox },
+        feature: { brush: { type: ["rect", "clear"], title: { rect: "框选", clear: "清除" } } } },
+      brush: { xAxisIndex: 0, yAxisIndex: 0, brushMode: "single",
+        throttleType: "debounce", throttleDelay: 350, outOfBrush: { colorAlpha: 0.35 } },
+      visualMap: { show: false, min: 0, max: maxValue || 1, inRange: { color: C.heatRange } },
+      xAxis: { type: "category", data: heatmapProvinces,
+        axisLine: { lineStyle: { color: C.axisLine } }, axisTick: { show: false },
+        axisLabel: { color: C.axisLabel, fontSize: 11, interval: 0 } },
+      yAxis: { type: "category", data: heatmapYears,
+        axisLine: { lineStyle: { color: C.axisLine } }, axisTick: { show: false },
+        axisLabel: { color: C.axisLabel, fontSize: 11 } },
+      series: [{
+        type: "heatmap",
+        data: heatmapData.map(function (item) {
+          var hi = maxValue ? (item[2] / maxValue) >= 0.6 : false;
+          return { value: item, label: {
+            color: hi ? C.heatLabelHigh : C.heatLabel,
+            textBorderColor: hi ? C.heatLabelHighBorder : C.heatLabelBorder
+          } };
+        }),
+        label: { show: true, fontSize: 10, color: C.heatLabel,
+          textBorderColor: C.heatLabelBorder, textBorderWidth: 2,
+          formatter: function (p) { return p.value[2] >= 1000 ? (p.value[2] / 1000).toFixed(1) + "k" : p.value[2]; } },
+        itemStyle: { borderColor: C.heatBorder, borderWidth: 1, borderRadius: 4 },
+        emphasis: { itemStyle: { borderColor: C.heatEmph, borderWidth: 1.5, shadowBlur: 8, shadowColor: C.heatEmph } }
+      }]
+    }, true);
+    setTimeout(function () {
+      heatmapChart.dispatchAction({ type: "takeGlobalCursor", key: "brush",
+        brushOption: { brushType: "rect" } });
+    }, 100);
+  }
+
+  function loadHeatmap() {
     setLoading("heatmapPanel", true);
     return fetchJSON("/api/heatmap")
       .then(function (data) {
-        var rawValues = data.values || [];
-        if (data.hasData) {
-          var keepProv = [];
-          var keepYear = [];
-          rawValues.forEach(function (v) {
-            if (keepProv.indexOf(v[0]) < 0) keepProv.push(v[0]);
-            if (keepYear.indexOf(v[1]) < 0) keepYear.push(v[1]);
-          });
-          keepProv.sort(function (a, b) { return a - b; });
-          keepYear.sort(function (a, b) { return a - b; });
-          var provMap = {};
-          var yearMap = {};
-          keepProv.forEach(function (oldIdx, newIdx) { provMap[oldIdx] = newIdx; });
-          keepYear.forEach(function (oldIdx, newIdx) { yearMap[oldIdx] = newIdx; });
-          heatmapProvinces = keepProv.map(function (idx) { return data.provinces[idx]; });
-          heatmapYears = keepYear.map(function (idx) { return data.years[idx]; });
-          heatmapData = rawValues.map(function (v) {
-            return [provMap[v[0]], yearMap[v[1]], v[2]];
-          });
-          $("heatmapMeta").textContent = heatmapProvinces.length + " 省 · " +
-            heatmapYears.length + " 年 · 框选联动";
-        } else {
-          heatmapProvinces = data.provinces;
-          heatmapYears = data.years;
-          heatmapData = [];
-          $("heatmapMeta").textContent = "年份 × 省份 · 暂无数据";
-        }
-
+        var raw = data.values || [];
+        var keepProv = [];
+        var keepYear = [];
+        raw.forEach(function (v) {
+          if (keepProv.indexOf(v[0]) < 0) keepProv.push(v[0]);
+          if (keepYear.indexOf(v[1]) < 0) keepYear.push(v[1]);
+        });
+        keepProv.sort(function (a, b) { return a - b; });
+        keepYear.sort(function (a, b) { return a - b; });
+        var provMap = {}, yearMap = {};
+        keepProv.forEach(function (o, i) { provMap[o] = i; });
+        keepYear.forEach(function (o, i) { yearMap[o] = i; });
+        heatAll = {
+          provinces: keepProv.map(function (i) { return data.provinces[i]; }),
+          years: keepYear.map(function (i) { return data.years[i]; }),
+          values: raw.map(function (v) { return [provMap[v[0]], yearMap[v[1]], v[2]]; })
+        };
         var panel = $("heatmapPanel");
         var oldEmpty = panel.querySelector(".heatmap-empty");
         if (oldEmpty) oldEmpty.remove();
@@ -1480,102 +1640,7 @@
           empty.textContent = "暂无招生数据：运行招生爬虫并导入后自动显示";
           panel.appendChild(empty);
         }
-
-        var maxValue = heatmapData.reduce(function (max, item) {
-          return Math.max(max, item[2]);
-        }, 0);
-
-        heatmapChart.setOption({
-          backgroundColor: "transparent",
-          grid: { left: 50, right: 20, top: 44, bottom: 30 },
-          tooltip: {
-            position: "top",
-            backgroundColor: C.tooltipBg,
-            borderColor: C.tooltipBorder,
-            textStyle: { color: C.tooltipText, fontSize: 12 },
-            formatter: function (p) {
-              return heatmapProvinces[p.value[0]] + " · " + heatmapYears[p.value[1]] + " 年" +
-                "<br/>招生 " + p.value[2] + " 人";
-            }
-          },
-          toolbox: {
-            right: 2,
-            top: 2,
-            iconStyle: { borderColor: C.toolbox },
-            feature: {
-              brush: {
-                type: ["rect", "clear"],
-                title: { rect: "框选", clear: "清除" }
-              }
-            }
-          },
-          brush: {
-            xAxisIndex: 0,
-            yAxisIndex: 0,
-            brushMode: "single",
-            throttleType: "debounce",
-            throttleDelay: 350,
-            outOfBrush: { colorAlpha: 0.35 }
-          },
-          visualMap: {
-            show: false,
-            min: 0,
-            max: maxValue || 1,
-            inRange: { color: C.heatRange }
-          },
-          xAxis: {
-            type: "category",
-            data: heatmapProvinces,
-            axisLine: { lineStyle: { color: C.axisLine } },
-            axisTick: { show: false },
-            axisLabel: { color: C.axisLabel, fontSize: 11, interval: 0 }
-          },
-          yAxis: {
-            type: "category",
-            data: heatmapYears,
-            axisLine: { lineStyle: { color: C.axisLine } },
-            axisTick: { show: false },
-            axisLabel: { color: C.axisLabel, fontSize: 11 }
-          },
-          series: [{
-            type: "heatmap",
-            /* 按数值比例动态分配文字色：浅格深字、深格白字（暗色主题反向），保证双主题可读 */
-            data: heatmapData.map(function (item) {
-              var hi = maxValue ? (item[2] / maxValue) >= 0.6 : false;
-              return {
-                value: item,
-                label: {
-                  color: hi ? C.heatLabelHigh : C.heatLabel,
-                  textBorderColor: hi ? C.heatLabelHighBorder : C.heatLabelBorder
-                }
-              };
-            }),
-            label: {
-              show: true,
-              fontSize: 10,
-              color: C.heatLabel,
-              textBorderColor: C.heatLabelBorder,
-              textBorderWidth: 2,
-              formatter: function (p) {
-                return p.value[2] >= 1000 ? (p.value[2] / 1000).toFixed(1) + "k" : p.value[2];
-              }
-            },
-            itemStyle: { borderColor: C.heatBorder, borderWidth: 1, borderRadius: 4 },
-            emphasis: {
-              itemStyle: { borderColor: C.heatEmph, borderWidth: 1.5, shadowBlur: 8, shadowColor: C.heatEmph }
-            }
-          }]
-        }, true);
-
-        if (data.hasData) {
-          setTimeout(function () {
-            heatmapChart.dispatchAction({
-              type: "takeGlobalCursor",
-              key: "brush",
-              brushOption: { brushType: "rect" }
-            });
-          }, 120);
-        }
+        renderHomeHeatPage(0);
       })
       .catch(function (err) {
         $("heatmapMeta").textContent = "加载失败";
@@ -1625,6 +1690,332 @@
   }
 
   // ------------------------------------------------------------------ 搜索
+  // ------------------------------------------------------------------ 招生详情页
+  var detailMeta = null;
+
+  function detailChartIds() {
+    var ids = [];
+    document.querySelectorAll("#chartPicker input:checked").forEach(function (cb) {
+      ids.push(cb.value);
+    });
+    return ids.length ? ids : ["heatmap"];
+  }
+
+  function loadDetailMeta() {
+    if (detailMeta) return Promise.resolve(detailMeta);
+    return fetchJSON("/api/admission_meta").then(function (meta) {
+      detailMeta = meta;
+      fillSelect($("dYear"), meta.years || [], "全部年份");
+      fillSelect($("dProvince"), (meta.provinces || []).map(function (p) { return p.province; }), "全部省份");
+      fillSelect($("dSchool"), (meta.schools || []).map(function (s) { return s.name; }), "全部学校");
+      return meta;
+    });
+  }
+
+  function fillSelect(select, values, placeholder) {
+    if (!select) return;
+    var current = select.value;
+    select.innerHTML = "";
+    var first = document.createElement("option");
+    first.value = "";
+    first.textContent = placeholder;
+    select.appendChild(first);
+    values.forEach(function (value) {
+      var opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = value;
+      select.appendChild(opt);
+    });
+    if (current) select.value = current;
+  }
+
+  function syncDetailSelects() {
+    if ($("dYear")) $("dYear").value = detailState.year == null ? "" : String(detailState.year);
+    if ($("dProvince")) $("dProvince").value = detailState.province || "";
+    if ($("dSchool")) $("dSchool").value = detailState.school || "";
+  }
+
+  function openDetail() {
+    detailState.year = state.year;
+    detailState.province = state.province;
+    detailState.school = state.school;
+    $("detailPage").classList.add("show");
+    $("detailPage").setAttribute("aria-hidden", "false");
+    document.querySelectorAll("#chartPicker input").forEach(function (cb) {
+      cb.checked = detailState.charts.indexOf(cb.value) >= 0;
+    });
+    loadDetailMeta().then(function (meta) {
+      var years = meta.years || [];
+      if (years.length && years.indexOf(detailState.year) < 0) {
+        detailState.year = years[years.length - 1];
+      }
+      var provinces = (meta.provinces || []).map(function (p) { return p.province; });
+      if (provinces.length && provinces.indexOf(detailState.province) < 0) {
+        detailState.province = provinces[0];
+      }
+      if (!detailState.school && meta.schools && meta.schools.length) {
+        detailState.school = meta.schools[0].name;
+      }
+      syncDetailSelects();
+      renderDetail();
+    }).catch(function (err) {
+      showError("详情数据加载失败：" + err.message);
+    });
+  }
+
+  function closeDetail() {
+    $("detailPage").classList.remove("show");
+    $("detailPage").setAttribute("aria-hidden", "true");
+    $("chartPicker").classList.remove("show");
+    state.year = detailState.year || state.year;
+    state.province = detailState.province || state.province;
+    state.school = detailState.school || state.school;
+    $("yearSelect").value = String(state.year);
+    $("schoolInput").value = state.school;
+    loadMap();
+    loadProvince(state.province);
+    loadTrend(state.school);
+    if (heatAll) {
+      var idx = heatAll.provinces.indexOf(state.province);
+      if (idx >= 0) renderHomeHeatPage(Math.floor(idx / HEAT_PAGE_SIZE));
+    }
+    toast("已应用详情页联动状态");
+  }
+
+  function renderDetail() {
+    var charts = detailState.charts && detailState.charts.length ? detailState.charts : ["heatmap"];
+    var groups = [];
+    for (var i = 0; i < charts.length; i += 2) groups.push(charts.slice(i, i + 2));
+    if (detailState.activeTab >= groups.length) detailState.activeTab = 0;
+    renderDetailTabs(groups);
+    renderDetailGroup(groups[detailState.activeTab] || []);
+  }
+
+  function renderDetailTabs(groups) {
+    var bar = $("detailTabs");
+    bar.innerHTML = "";
+    groups.forEach(function (group, index) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "标签 " + (index + 1) + " · " + group.map(chartTitle).join(" + ");
+      if (index === detailState.activeTab) btn.classList.add("active");
+      if (detailDirty[index]) {
+        var dot = document.createElement("span");
+        dot.className = "dirty-dot";
+        dot.title = "联动状态已更新";
+        btn.appendChild(dot);
+      }
+      btn.addEventListener("click", function () {
+        detailState.activeTab = index;
+        detailDirty[index] = false;
+        renderDetail();
+      });
+      bar.appendChild(btn);
+    });
+  }
+
+  function chartTitle(id) {
+    return { heatmap: "热力图", region: "区域专业", school: "学校专业", trend: "排名趋势" }[id] || id;
+  }
+
+  function renderDetailGroup(group) {
+    var body = $("detailBody");
+    body.innerHTML = "";
+    body.classList.toggle("single", group.length < 2);
+    group.forEach(function (id) {
+      var panel = document.createElement("section");
+      panel.className = "detail-panel";
+      var head = document.createElement("div");
+      head.className = "dp-head";
+      var title = document.createElement("h3");
+      title.textContent = chartTitle(id);
+      var meta = document.createElement("span");
+      meta.className = "dp-meta";
+      head.appendChild(title);
+      head.appendChild(meta);
+      var chart = document.createElement("div");
+      chart.className = "dp-chart";
+      var hint = document.createElement("div");
+      hint.className = "dp-hint";
+      panel.appendChild(head);
+      panel.appendChild(chart);
+      panel.appendChild(hint);
+      body.appendChild(panel);
+      renderDetailChart(id, chart, meta, hint);
+    });
+  }
+
+  function markOtherTabsDirty() {
+    var total = Math.ceil(detailState.charts.length / 2);
+    for (var i = 0; i < total; i++) {
+      detailDirty[i] = i !== detailState.activeTab;
+    }
+    var groups = [];
+    var charts = detailState.charts;
+    for (var j = 0; j < charts.length; j += 2) groups.push(charts.slice(j, j + 2));
+    renderDetailTabs(groups);
+  }
+
+  function applyDetailState(patch) {
+    Object.keys(patch).forEach(function (key) { detailState[key] = patch[key]; });
+    syncDetailSelects();
+    markOtherTabsDirty();
+    renderDetailGroup(currentDetailGroup());
+  }
+
+  function currentDetailGroup() {
+    var group = [];
+    var charts = detailState.charts;
+    for (var i = 0; i < charts.length; i += 2) {
+      if (i / 2 === detailState.activeTab) group = charts.slice(i, i + 2);
+    }
+    return group;
+  }
+
+  function renderDetailChart(id, el, meta, hint) {
+    if (id === "heatmap") return renderDetailHeatmap(el, meta, hint);
+    if (id === "region") return renderDetailRegion(el, meta, hint);
+    if (id === "school") return renderDetailSchool(el, meta, hint);
+    if (id === "trend") return renderDetailTrend(el, meta, hint);
+  }
+
+  function renderDetailHeatmap(el, meta, hint) {
+    if (!heatAll) { el.innerHTML = '<div class="empty-tip">暂无招生数据</div>'; return; }
+    var C = chartTheme();
+    var chart = echarts.init(el, null, { renderer: "canvas" });
+    detailChartInstances[idKey(el)] = chart;
+    var values = heatAll.values;
+    var maxValue = values.reduce(function (m, v) { return Math.max(m, v[2]); }, 0);
+    chart.setOption({
+      backgroundColor: "transparent",
+      grid: { left: 56, right: 26, top: 30, bottom: 54 },
+      tooltip: { position: "top", backgroundColor: C.tooltipBg, borderColor: C.tooltipBorder,
+        textStyle: { color: C.tooltipText, fontSize: 12 },
+        formatter: function (p) {
+          return heatAll.provinces[p.value[0]] + " · " + heatAll.years[p.value[1]] + " 年<br/>招生 " + p.value[2] + " 人";
+        } },
+      dataZoom: [{ type: "inside", xAxisIndex: 0 }, { type: "slider", xAxisIndex: 0, height: 14, bottom: 8 }],
+      visualMap: { show: false, min: 0, max: maxValue || 1, inRange: { color: C.heatRange } },
+      xAxis: { type: "category", data: heatAll.provinces, axisLabel: { color: C.axisLabel, fontSize: 9, interval: 0, rotate: 45 },
+        axisLine: { lineStyle: { color: C.axisLine } }, axisTick: { show: false } },
+      yAxis: { type: "category", data: heatAll.years, axisLabel: { color: C.axisLabel, fontSize: 10 },
+        axisLine: { lineStyle: { color: C.axisLine } }, axisTick: { show: false } },
+      series: [{ type: "heatmap", data: values,
+        label: { show: true, fontSize: 8, color: C.heatLabel, textBorderColor: C.heatLabelBorder, textBorderWidth: 1,
+          formatter: function (p) { return p.value[2] >= 1000 ? (p.value[2] / 1000).toFixed(1) + "k" : p.value[2]; } },
+        itemStyle: { borderColor: C.heatBorder, borderWidth: 1 },
+        emphasis: { itemStyle: { borderColor: C.heatEmph, borderWidth: 1.5 } } }]
+    }, true);
+    chart.on("click", function (p) {
+      if (!p.value) return;
+      applyDetailState({ province: heatAll.provinces[p.value[0]], year: heatAll.years[p.value[1]] });
+    });
+    meta.textContent = "点击格子选择省份与年份";
+    hint.textContent = "横向可拖动缩放；点击某个格子 → 区域/学校专业表同步";
+    setTimeout(function () { chart.resize(); }, 60);
+  }
+
+  function renderDetailRegion(el, meta, hint) {
+    el.innerHTML = '<div class="empty-tip">加载中…</div>';
+    var params = { limit: 30 };
+    if (detailState.province) params.province = detailState.province;
+    if (detailState.year) params.year = detailState.year;
+    fetchJSON("/api/majors", params).then(function (data) {
+      el.innerHTML = "";
+      if (!data.hasData) { el.innerHTML = '<div class="empty-tip">该省份/年份暂无招生数据</div>'; meta.textContent = "暂无数据"; return; }
+      var table = document.createElement("table");
+      table.className = "majors-table";
+      table.innerHTML = "<thead><tr><th>专业</th><th>招生人数</th><th>学校数</th></tr></thead>";
+      var tbody = document.createElement("tbody");
+      data.rows.forEach(function (row) {
+        var tr = document.createElement("tr");
+        [row.major, row.total, row.schools].forEach(function (value, i) {
+          var td = document.createElement("td");
+          if (i === 1) td.className = "num";
+          td.textContent = value;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      el.appendChild(table);
+      meta.textContent = (detailState.province || "全部省份") + " · " + (detailState.year || "全部年份");
+    }).catch(function (err) { el.innerHTML = '<div class="empty-tip">' + err.message + '</div>'; });
+    hint.textContent = "与热力图、学校专业共享当前省份/年份";
+  }
+
+  function renderDetailSchool(el, meta, hint) {
+    el.innerHTML = '<div class="empty-tip">加载中…</div>';
+    var params = { limit: 200 };
+    if (detailState.school) params.school = detailState.school;
+    /* 学校专业表按“学校 + 年份”展示全国各省，不受当前省份筛选限制，
+       否则选中外省学校时会误显示为空。 */
+    if (detailState.year) params.year = detailState.year;
+    if (!detailState.school) { el.innerHTML = '<div class="empty-tip">请选择学校</div>'; return; }
+    fetchJSON("/api/school_majors", params).then(function (data) {
+      el.innerHTML = "";
+      if (!data.hasData) { el.innerHTML = '<div class="empty-tip">该校在所选条件下暂无招生数据</div>'; meta.textContent = "暂无数据"; return; }
+      var table = document.createElement("table");
+      table.className = "majors-table";
+      table.innerHTML = "<thead><tr><th>专业</th><th>年份</th><th>省份</th><th>人数</th></tr></thead>";
+      var tbody = document.createElement("tbody");
+      data.rows.forEach(function (row) {
+        var tr = document.createElement("tr");
+        [row.major, row.year, row.province, row.total].forEach(function (value, i) {
+          var td = document.createElement("td");
+          if (i === 3) td.className = "num";
+          td.textContent = value;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      el.appendChild(table);
+      meta.textContent = detailState.school + " · " + data.rows.length + " 条";
+    }).catch(function (err) { el.innerHTML = '<div class="empty-tip">' + err.message + '</div>'; });
+    hint.textContent = "点击热力图或修改筛选会同步刷新";
+  }
+
+  function renderDetailTrend(el, meta, hint) {
+    if (!detailState.school) { el.innerHTML = '<div class="empty-tip">请选择学校</div>'; return; }
+    var C = chartTheme();
+    var chart = echarts.init(el, null, { renderer: "canvas" });
+    detailChartInstances[idKey(el)] = chart;
+    fetchJSON("/api/trend", { school: detailState.school }).then(function (data) {
+      var ranks = data.ranks.map(function (r) { return r == null ? null : (r >= RANK_PLUS ? RANK_PLUS : r); });
+      var maxRank = ranks.reduce(function (m, v) { return v == null ? m : Math.max(m, v); }, 1);
+      var hasPlus = ranks.indexOf(RANK_PLUS) >= 0;
+      chart.setOption({
+        backgroundColor: "transparent",
+        grid: { left: 48, right: 24, top: 30, bottom: 50 },
+        tooltip: { trigger: "axis", backgroundColor: C.tooltipBg, borderColor: C.tooltipBorder,
+          textStyle: { color: C.tooltipText, fontSize: 12 } },
+        xAxis: { type: "category", boundaryGap: false, data: data.years,
+          axisLine: { lineStyle: { color: C.axisLine } }, axisLabel: { color: C.axisLabel, fontSize: 10 } },
+        yAxis: { type: "value", inverse: true, min: 1, max: hasPlus ? RANK_PLUS : Math.max(5, maxRank + 2),
+          axisLabel: { color: C.axisLabel, fontSize: 10, formatter: function (v) { return v >= RANK_PLUS ? "500+" : v; } },
+          splitLine: { lineStyle: { color: C.splitLine, type: "dashed" } } },
+        series: [{ type: "line", data: ranks, symbolSize: 7,
+          lineStyle: { width: 2, color: C.lineMain }, itemStyle: { color: C.lineMain } }]
+      }, true);
+    }).catch(function (err) { el.innerHTML = '<div class="empty-tip">' + err.message + '</div>'; });
+    meta.textContent = detailState.school;
+    hint.textContent = "排名数据来自软科；年份为 2021-2026";
+  }
+
+  function idKey(el) {
+    if (!el.__detailKey) el.__detailKey = "dp-" + Math.random().toString(36).slice(2);
+    return el.__detailKey;
+  }
+
+  function applyDetailFilters() {
+    detailState.year = $("dYear").value ? parseInt($("dYear").value, 10) : null;
+    detailState.province = $("dProvince").value || "";
+    detailState.school = $("dSchool").value || "";
+    markOtherTabsDirty();
+    renderDetailGroup(currentDetailGroup());
+  }
+
   function loadSchoolOptions(keyword) {
     fetchJSON("/api/schools", { keyword: keyword, limit: 20 })
       .then(function (rows) {
@@ -1713,8 +2104,35 @@
       if (retryAction) retryAction();
     });
 
+    $("detailBtn").addEventListener("click", openDetail);
+    $("detailBack").addEventListener("click", closeDetail);
+    $("dApply").addEventListener("click", applyDetailFilters);
+    $("dPick").addEventListener("click", function () {
+      $("chartPicker").classList.toggle("show");
+    });
+    $("cpApply").addEventListener("click", function () {
+      detailState.charts = detailChartIds();
+      detailState.activeTab = 0;
+      detailDirty = {};
+      $("chartPicker").classList.remove("show");
+      renderDetail();
+    });
+    $("heatPrev").addEventListener("click", function () { renderHomeHeatPage(heatPage - 1); });
+    $("heatNext").addEventListener("click", function () { renderHomeHeatPage(heatPage + 1); });
+    $("themeToggle").addEventListener("click", function () {
+      setTimeout(function () {
+        if ($("detailPage").classList.contains("show")) {
+          renderDetailGroup(currentDetailGroup());
+        }
+      }, 80);
+    });
+
     window.addEventListener("resize", debounce(function () {
       [mapChart, trendChart, provinceChart, heatmapChart].forEach(function (chart) {
+        if (chart) chart.resize();
+      });
+      Object.keys(detailChartInstances).forEach(function (key) {
+        var chart = detailChartInstances[key];
         if (chart) chart.resize();
       });
     }, 160));

@@ -189,6 +189,22 @@ def main(argv=None) -> int:
         c.check("[majors] rows 与 hasData 一致",
                 (len(body["data"]["rows"]) > 0) == has_data)
 
+    # 6.6) 辅助接口：招生筛选元数据 / 学校专业明细
+    body = envelope(c.get("/api/admission_meta"), c, "[admission_meta]")
+    if body and body["code"] == 0:
+        meta = body["data"]
+        c.check("[admission_meta] 年份为列表", isinstance(meta.get("years"), list))
+        c.check("[admission_meta] 省份为列表", isinstance(meta.get("provinces"), list))
+        c.check("[admission_meta] 学校为列表", isinstance(meta.get("schools"), list))
+
+    body = envelope(c.get("/api/school_majors", school="清华大学"), c, "[school_majors]")
+    if body and body["code"] == 0:
+        d = body["data"]
+        c.check("[school_majors] 返回学校信息", isinstance(d.get("school"), dict))
+        c.check("[school_majors] rows 为列表", isinstance(d.get("rows"), list))
+        c.check("[school_majors] hasData 与 rows 一致",
+                (len(d["rows"]) > 0) == d.get("hasData"))
+
     # 7) 参数校验：year 非法
     body = envelope(c.get("/api/map_data", year="abc"), c, "[year=abc]")
     if body:
