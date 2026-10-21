@@ -215,14 +215,14 @@ def fetch_plan(school_id: int, province: str, type_id: int, year: int,
     return rows
 
 
-def load_done(out_path: Path) -> set[tuple[str, str, str, str]]:
+def load_done(out_path: Path) -> set[tuple[str, str, str]]:
+    """已完成的 (学校, 年份, 招生省份) 组合；不区分科类，避免重复抓取。"""
     done = set()
     if not out_path.exists():
         return done
     with out_path.open("r", encoding="utf-8-sig", newline="") as fh:
         for row in csv.DictReader(fh):
-            done.add((row.get("univ_slug", ""), row.get("year", ""),
-                      row.get("province", ""), row.get("local_type", "")))
+            done.add((row.get("univ_slug", ""), row.get("year", ""), row.get("province", "")))
     return done
 
 
@@ -286,11 +286,11 @@ def main(argv=None) -> int:
 
             for province in province_ids:
                 for year in years:
+                    combo_key = (slug, str(year), PROVINCE_NAME.get(province, province))
+                    if combo_key in done:
+                        continue
                     types = forced_types or type_candidates(province, year)
                     for type_id in types:
-                        key = (slug, str(year), PROVINCE_NAME.get(province, province), str(type_id))
-                        if key in done:
-                            continue
                         items = fetch_plan(school_id, province, type_id, year, args.rate)
                         if not items and not forced_types and type_id != types[-1]:
                             time.sleep(args.rate)
@@ -309,6 +309,7 @@ def main(argv=None) -> int:
                                 "tuition": item.get("tuition", ""),
                             })
                         fh.flush()
+                        done.add(combo_key)
                         total += len(items)
                         logger.info("%d/%d %s · %s · %d · type%s -> %d 行（累计 %d）",
                                     index, len(schools), name, PROVINCE_NAME.get(province, province),
@@ -316,9 +317,9 @@ def main(argv=None) -> int:
                         if args.min_rows and total >= args.min_rows and index >= 8:
                             logger.info("已达到 min-rows=%d，提前结束", args.min_rows)
                             raise StopIteration
+                        time.sleep(args.rate)
                         if items:
                             break
-                        time.sleep(args.rate)
             MAP_JSON.write_text(json.dumps(cache, ensure_ascii=False, indent=1), encoding="utf-8")
     except StopIteration:
         pass
