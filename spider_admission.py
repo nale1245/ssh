@@ -83,6 +83,10 @@ CSV_FIELDS = ["univ_slug", "univ_name", "school_id", "year", "province",
 logger = logging.getLogger("spider_admission")
 
 
+class ThrottleError(RuntimeError):
+    """接口持续限流，交给外层重试，避免每个学校都长时间空等。"""
+
+
 def setup_logging() -> None:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     logger.setLevel(logging.INFO)
@@ -104,9 +108,10 @@ def get_json(params: dict, retries: int = 3):
             resp.raise_for_status()
             data = resp.json()
             if isinstance(data, dict) and data.get("code") == "1069":
-                wait = 120 + attempt * 120
-                logger.warning("触发接口限流，等待 %d 秒后重试", wait)
-                time.sleep(wait)
+                if attempt >= 1:
+                    raise ThrottleError("接口持续限流")
+                logger.warning("触发接口限流，等待 90 秒后重试")
+                time.sleep(90)
                 continue
             return data
         except Exception as exc:  # noqa: BLE001
@@ -261,6 +266,7 @@ def main(argv=None) -> int:
     total = 0
     started = time.time()
     logger.info("开始采集：%d 所学校 x %d 省 x %d 年", len(schools), len(provinces), len(years))
+    throttle_hit = False
     try:
         for index, school in enumerate(schools, 1):
             slug, name = school["slug"], school["name"]
@@ -316,11 +322,16 @@ def main(argv=None) -> int:
             MAP_JSON.write_text(json.dumps(cache, ensure_ascii=False, indent=1), encoding="utf-8")
     except StopIteration:
         pass
+    except ThrottleError:
+        throttle_hit = True
+        logger.warning("持续限流，本次提前结束，稍后可 --resume 续跑")
     finally:
         fh.close()
         MAP_JSON.write_text(json.dumps(cache, ensure_ascii=False, indent=1), encoding="utf-8")
 
     logger.info("完成：%d 行，用时 %.1f 秒 -> %s", total, time.time() - started, out_path)
+    if throttle_hit:
+        return 2
     return 0 if total else 1
 
 
