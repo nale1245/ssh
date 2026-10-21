@@ -1846,12 +1846,13 @@
   }
 
   function markOtherTabsDirty() {
-    Object.keys(detailDirty).forEach(function (key) {
-      detailDirty[key] = Number(key) !== detailState.activeTab;
-    });
+    var total = Math.ceil(detailState.charts.length / 2);
+    for (var i = 0; i < total; i++) {
+      detailDirty[i] = i !== detailState.activeTab;
+    }
     var groups = [];
     var charts = detailState.charts;
-    for (var i = 0; i < charts.length; i += 2) groups.push(charts.slice(i, i + 2));
+    for (var j = 0; j < charts.length; j += 2) groups.push(charts.slice(j, j + 2));
     renderDetailTabs(groups);
   }
 
@@ -1947,7 +1948,8 @@
     el.innerHTML = '<div class="empty-tip">加载中…</div>';
     var params = { limit: 200 };
     if (detailState.school) params.school = detailState.school;
-    if (detailState.province) params.province = detailState.province;
+    /* 学校专业表按“学校 + 年份”展示全国各省，不受当前省份筛选限制，
+       否则选中外省学校时会误显示为空。 */
     if (detailState.year) params.year = detailState.year;
     if (!detailState.school) { el.innerHTML = '<div class="empty-tip">请选择学校</div>'; return; }
     fetchJSON("/api/school_majors", params).then(function (data) {
