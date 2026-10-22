@@ -242,6 +242,8 @@ def main(argv=None) -> int:
     parser.add_argument("--rate", type=float, default=0.8, help="请求间隔秒")
     parser.add_argument("--min-rows", type=int, default=0, help="达到行数后可提前结束")
     parser.add_argument("--resume", action="store_true", help="跳过已采集组合")
+    parser.add_argument("--first-type-only", action="store_true",
+                        help="每个组合只尝试第一个科类 ID（跨省大范围采集时提速）")
     parser.add_argument("--only-school-provinces", default="",
                         help="只采集这些学校所在省的学校，逗号分隔，如 宁夏,新疆,西藏,青海")
     args = parser.parse_args(argv)
@@ -295,6 +297,8 @@ def main(argv=None) -> int:
                     if combo_key in done:
                         continue
                     types = forced_types or type_candidates(province, year)
+                    if args.first_type_only:
+                        types = types[:1]
                     for type_id in types:
                         items = fetch_plan(school_id, province, type_id, year, args.rate)
                         if not items and not forced_types and type_id != types[-1]:
