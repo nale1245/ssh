@@ -227,13 +227,19 @@ def main(argv=None) -> int:
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
 
-    path = Path(args.csv)
-    if not path.exists():
-        log("❌ 找不到招生 CSV：%s（请先运行招生爬虫）" % path)
+    paths = [Path(item.strip()) for item in args.csv.split(",") if item.strip()]
+    missing = [p for p in paths if not p.exists()]
+    if missing:
+        log("❌ 找不到招生 CSV：%s" % ", ".join(str(p) for p in missing))
         return 2
 
-    log("读取 %s ..." % path)
-    df = read_csv(path)
+    log("读取 %d 个招生 CSV ..." % len(paths))
+    frames = [read_csv(path) for path in paths]
+    df = pd.concat(frames, ignore_index=True, sort=False)
+    before_dedupe = len(df)
+    df = df.drop_duplicates()
+    if len(df) != before_dedupe:
+        log("  跨文件完全重复行：%d" % (before_dedupe - len(df)))
 
     slug_map = {}
     clean_path = PROJECT_ROOT / "data" / "clean_rankings.csv"

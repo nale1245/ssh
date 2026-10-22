@@ -489,6 +489,107 @@ def api_school_majors():
 
 
 # --------------------------------------------------------------------------- #
+# 辅助：桑基图数据（学校所在省/大学/专业大类 → 招生省份）
+# --------------------------------------------------------------------------- #
+MAJOR_CATEGORY_CSV = Path(__file__).resolve().parent / "data" / "major_categories.csv"
+_major_category_cache: dict[str, str] | None = None
+
+
+def major_category_map() -> dict[str, str]:
+    """专业名 -> 大类；映射表不存在时全部归入“其他”。"""
+    global _major_category_cache
+    if _major_category_cache is None:
+        mapping: dict[str, str] = {}
+        if MAJOR_CATEGORY_CSV.exists():
+            import csv as _csv
+            with MAJOR_CATEGORY_CSV.open("r", encoding="utf-8-sig", newline="") as fh:
+                for row in _csv.DictReader(fh):
+                    if row.get("major"):
+                        mapping[row["major"]] = row.get("category") or "其他"
+        _major_category_cache = mapping
+    return _major_category_cache
+
+
+@app.get("/api/sankey")
+def api_sankey():
+    """
+    桑基图数据。
+
+    level=province：学校所在省 -> 招生省份（默认）
+    level=university：指定 province 下，学校 -> 招生省份
+    level=major：指定 school 下，专业大类 -> 招生省份
+    其他参数：year、target（招生省份过滤）
+    """
+    level = (request.args.get("level") or "province").strip()
+    if level not in ("province", "university", "major"):
+        raise ApiError(1001, "level 只能是 province / university / major")
+
+    year = parse_year()
+    target = (request.args.get("target") or "").strip()
+    province = (request.args.get("province") or "").strip()
+    school = (request.args.get("school") or "").strip()
+
+    where = ["1 = 1"]
+    params: list = []
+    if year is not None:
+        where.append("a.year = %s")
+        params.append(year)
+    if target:
+        where.append("a.province = %s")
+        params.append(target)
+
+    if level == "province":
+        select = "u.province AS src, a.province AS dst, SUM(a.`count`) AS value"
+        group = "u.province, a.province"
+    elif level == "university":
+        if not province:
+            raise ApiError(1001, "缺少参数 province")
+        where.append("u.province = %s")
+        params.append(province)
+        select = "u.name AS src, a.province AS dst, SUM(a.`count`) AS value"
+        group = "u.name, a.province"
+    else:
+        if not school:
+            raise ApiError(1001, "缺少参数 school")
+        where.append("u.name = %s")
+        params.append(school)
+        select = "a.major AS src, a.province AS dst, SUM(a.`count`) AS value"
+        group = "a.major, a.province"
+
+    sql = (
+        "SELECT " + select + " FROM admission a "
+        "JOIN university u ON u.id = a.univ_id "
+        "WHERE " + " AND ".join(where) + " "
+        "GROUP BY " + group
+    )
+    rows = query_all(sql, tuple(params))
+
+    if level == "major":
+        category_map = major_category_map()
+        aggregated: dict[tuple[str, str], int] = {}
+        for row in rows:
+            category = category_map.get(row["src"], "其他")
+            key = (category, row["dst"])
+            aggregated[key] = aggregated.get(key, 0) + int(row["value"] or 0)
+        links = [
+            {"source": source, "target": dest, "value": value}
+            for (source, dest), value in aggregated.items()
+        ]
+    else:
+        links = [
+            {"source": row["src"], "target": row["dst"], "value": int(row["value"] or 0)}
+            for row in rows
+        ]
+
+    return ok({
+        "level": level,
+        "links": links,
+        "total": sum(link["value"] for link in links),
+        "filters": {"year": year, "target": target, "province": province, "school": school},
+    })
+
+
+# --------------------------------------------------------------------------- #
 # 健康检查（辅助，不在 6 个业务接口内）
 # --------------------------------------------------------------------------- #
 @app.get("/api/health")

@@ -205,6 +205,19 @@ def main(argv=None) -> int:
         c.check("[school_majors] hasData 与 rows 一致",
                 (len(d["rows"]) > 0) == d.get("hasData"))
 
+    # 6.7) 桑基图数据
+    body = envelope(c.get("/api/sankey"), c, "[sankey province]")
+    if body and body["code"] == 0:
+        d = body["data"]
+        c.check("[sankey province] links 为列表", isinstance(d.get("links"), list))
+        c.check("[sankey province] 非空", len(d.get("links") or []) > 0)
+    body = envelope(c.get("/api/sankey", level="university", province="江苏"), c, "[sankey university]")
+    if body and body["code"] == 0:
+        c.check("[sankey university] 非空", len(body["data"].get("links") or []) > 0)
+    body = envelope(c.get("/api/sankey", level="major", school="南京大学"), c, "[sankey major]")
+    if body and body["code"] == 0:
+        c.check("[sankey major] 非空", len(body["data"].get("links") or []) > 0)
+
     # 7) 参数校验：year 非法
     body = envelope(c.get("/api/map_data", year="abc"), c, "[year=abc]")
     if body:
