@@ -542,10 +542,11 @@ def api_sankey():
         select = "u.province AS src, a.province AS dst, SUM(a.`count`) AS value"
         group = "u.province, a.province"
     elif level == "university":
-        if not province:
-            raise ApiError(1001, "缺少参数 province")
-        where.append("u.province = %s")
-        params.append(province)
+        if not province and not target:
+            raise ApiError(1001, "缺少参数 province 或 target")
+        if province:
+            where.append("u.province = %s")
+            params.append(province)
         select = "u.name AS src, a.province AS dst, SUM(a.`count`) AS value"
         group = "u.name, a.province"
     else:

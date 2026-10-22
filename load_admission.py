@@ -148,12 +148,32 @@ def load_universities(conn) -> tuple[dict[str, int], dict[str, int]]:
     return exact, normalized
 
 
-def load_to_mysql(df: pd.DataFrame, database: str) -> dict:
+def ensure_university(conn, name: str, province: str, type_: str, level: str,
+                      is_211: int = 1, is_double: int = 1) -> int:
+    """确保某个校区/学校在 university 表中存在，返回 id。"""
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM university WHERE name = %s", (name,))
+        row = cur.fetchone()
+        if row:
+            return int(row[0] if not isinstance(row, dict) else row["id"])
+        cur.execute(
+            "INSERT INTO university (name, province, type, level, is_985, is_211, is_double) "
+            "VALUES (%s, %s, %s, %s, 0, %s, %s)",
+            (name, province, type_, level, is_211, is_double),
+        )
+    conn.commit()
+    return int(cur.lastrowid)
+
+
+def load_to_mysql(df: pd.DataFrame, database: str, replace_year: int | None = None) -> dict:
     conn = connect()
     try:
         with conn.cursor() as cur:
             cur.execute("USE `%s`" % database)
-            cur.execute("DELETE FROM admission")
+            if replace_year is None:
+                cur.execute("DELETE FROM admission")
+            else:
+                cur.execute("DELETE FROM admission WHERE year = %s", (replace_year,))
             cur.execute("ALTER TABLE admission AUTO_INCREMENT = 1")
             records = [
                 (int(r.univ_id), int(r.year), r.province, r.major, int(r.count))
@@ -225,6 +245,8 @@ def main(argv=None) -> int:
     parser.add_argument("--clean-out", default=str(CLEAN_CSV))
     parser.add_argument("--database", default=DB_CONFIG["database"])
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--replace-year", type=int, default=None,
+                        help="只替换指定年份的招生数据（其余年份保留）")
     args = parser.parse_args(argv)
 
     paths = [Path(item.strip()) for item in args.csv.split(",") if item.strip()]
@@ -255,6 +277,10 @@ def main(argv=None) -> int:
         conn = connect()
         try:
             exact, normalized = load_universities(conn)
+            # 华北电力大学保定校区单独成校（北京校区对应排名主条目“华北电力大学”）
+            baoding_id = ensure_university(conn, "华北电力大学（保定）", "河北", "理工", "211")
+            exact["华北电力大学（保定）"] = baoding_id
+            normalized[normalize_name("华北电力大学（保定）")] = baoding_id
         finally:
             conn.close()
     except pymysql.MySQLError as exc:
@@ -288,7 +314,7 @@ def main(argv=None) -> int:
         return 0
 
     try:
-        stats = load_to_mysql(df, args.database)
+        stats = load_to_mysql(df, args.database, args.replace_year)
     except pymysql.MySQLError as exc:
         log("❌ 入库失败：%s" % exc)
         return 4

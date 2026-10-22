@@ -182,6 +182,23 @@ def main(argv=None) -> int:
                   page.locator("#dProvince").input_value())
         res.check("详情页标签存在", page.locator("#detailTabs button").count() >= 1,
                   str(page.locator("#detailTabs button").all_inner_texts()))
+        # 6.45) P2：桑基图 / 散点图
+        page.click("#dPick")
+        for cb in page.locator("#chartPicker input").all():
+            cb.uncheck()
+        page.locator("#chartPicker input[value=sankey]").check()
+        page.click("#cpApply")
+        page.wait_for_timeout(1800)
+        res.check("桑基图渲染", page.locator(".detail-panel canvas").count() > 0 and
+                  page.locator(".detail-panel .dp-meta").inner_text().strip() == "全国")
+        page.click("#dPick")
+        for cb in page.locator("#chartPicker input").all():
+            cb.uncheck()
+        page.locator("#chartPicker input[value=scatter]").check()
+        page.click("#cpApply")
+        page.wait_for_timeout(1600)
+        res.check("散点图渲染", "100 所" in page.locator(".detail-panel .dp-meta").inner_text())
+
         page.click("#detailBack")
         page.wait_for_timeout(900)
         res.check("详情页返回总览", "show" not in (page.locator("#detailPage").get_attribute("class") or ""))

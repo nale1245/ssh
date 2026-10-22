@@ -214,6 +214,9 @@ def main(argv=None) -> int:
     body = envelope(c.get("/api/sankey", level="university", province="江苏"), c, "[sankey university]")
     if body and body["code"] == 0:
         c.check("[sankey university] 非空", len(body["data"].get("links") or []) > 0)
+    body = envelope(c.get("/api/sankey", level="university", target="河南"), c, "[sankey target schools]")
+    if body and body["code"] == 0:
+        c.check("[sankey target schools] 非空", len(body["data"].get("links") or []) > 0)
     body = envelope(c.get("/api/sankey", level="major", school="南京大学"), c, "[sankey major]")
     if body and body["code"] == 0:
         c.check("[sankey major] 非空", len(body["data"].get("links") or []) > 0)

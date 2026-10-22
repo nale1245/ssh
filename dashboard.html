@@ -516,7 +516,7 @@
   .detail-body { display: grid; gap: var(--space-3); min-height: 0; grid-template-columns: 1fr 1fr; }
   .detail-body.single { grid-template-columns: 1fr; }
   .detail-panel {
-    display: grid; grid-template-rows: auto 1fr auto; min-height: 0;
+    display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; min-height: 0;
     border: 1px solid var(--border); border-radius: var(--radius);
     background: var(--card); box-shadow: var(--shadow-1); padding: var(--space-2) var(--space-3);
   }
@@ -526,6 +526,18 @@
   .detail-panel .dp-chart { min-height: 0; width: 100%; height: 100%; }
   .detail-panel .dp-body { min-height: 0; overflow: auto; }
   .detail-panel .dp-hint { font-size: 11px; color: var(--muted-foreground); padding-top: 4px; }
+  .detail-panel .dp-extra { min-height: 0; max-height: 132px; overflow: auto; border-top: 1px solid var(--border); margin-top: 4px; }
+  .scatter-list-item { display: flex; justify-content: space-between; gap: 8px; padding: 3px 6px; font-size: 11.5px; border-radius: 4px; cursor: pointer; }
+  .scatter-list-item:hover { background: var(--secondary); }
+  .scatter-list-item .num { color: var(--primary); font-variant-numeric: tabular-nums; }
+  .sankey-modal { position: fixed; inset: 0; z-index: 80; display: none; place-items: center; background: rgba(0,0,0,0.55); }
+  .sankey-modal.show { display: grid; }
+  .sankey-modal .box { width: 400px; max-height: 72vh; overflow: auto; background: var(--card-solid); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: var(--space-4); box-shadow: var(--shadow-2); }
+  .sankey-modal h3 { margin: 0 0 var(--space-2); font-size: 15px; }
+  .sankey-modal .modal-row { display: flex; justify-content: space-between; gap: 8px; padding: 5px 4px; font-size: 12.5px; border-bottom: 1px solid var(--border); }
+  .sankey-modal .actions { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+  .dp-meta .crumb { color: var(--primary); cursor: pointer; margin-right: 4px; }
+  .dp-meta .crumb:hover { text-decoration: underline; }
   .chart-picker {
     position: fixed; right: 24px; top: 78px; z-index: 65; width: 240px;
     padding: var(--space-3); border-radius: var(--radius); border: 1px solid var(--border-strong);
@@ -737,10 +749,22 @@
   <label><input type="checkbox" value="region" checked> 区域专业招生</label>
   <label><input type="checkbox" value="school"> 学校专业招生</label>
   <label><input type="checkbox" value="trend"> 排名趋势</label>
+  <label><input type="checkbox" value="sankey"> 专业流向（桑基）</label>
+  <label><input type="checkbox" value="scatter"> 科研 / 人才散点</label>
   <p class="cp-note">勾选后自动两两分组为标签页；同组两图双向联动，隐藏标签页会标记变化。</p>
   <button id="cpApply" class="primary" type="button">生成详情页</button>
 </div>
 
+<div class="sankey-modal" id="sankeyModal">
+  <div class="box">
+    <h3 id="sankeyModalTitle">其他省份</h3>
+    <div id="sankeyModalBody"></div>
+    <div class="actions">
+      <button id="sankeyExpandBtn" type="button" class="primary">展开前 6 个</button>
+      <button id="sankeyModalClose" type="button">关闭</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast" role="status"></div>
 <div class="error-banner" id="errorBanner" role="alert"><span id="errorText"></span><button id="retryBtn" type="button">重试</button></div>
 
@@ -1789,6 +1813,7 @@
     detailState.school = state.school;
     $("detailPage").classList.add("show");
     $("detailPage").setAttribute("aria-hidden", "false");
+    resetSankeyState();
     document.querySelectorAll("#chartPicker input").forEach(function (cb) {
       cb.checked = detailState.charts.indexOf(cb.value) >= 0;
     });
@@ -1863,7 +1888,7 @@
   }
 
   function chartTitle(id) {
-    return { heatmap: "热力图", region: "区域专业", school: "学校专业", trend: "排名趋势" }[id] || id;
+    return { heatmap: "热力图", region: "区域专业", school: "学校专业", trend: "排名趋势", sankey: "专业流向", scatter: "科研 / 人才散点" }[id] || id;
   }
 
   function renderDetailGroup(group) {
@@ -1883,13 +1908,16 @@
       head.appendChild(meta);
       var chart = document.createElement("div");
       chart.className = "dp-chart";
+      var extra = document.createElement("div");
+      extra.className = "dp-extra";
       var hint = document.createElement("div");
       hint.className = "dp-hint";
       panel.appendChild(head);
       panel.appendChild(chart);
+      panel.appendChild(extra);
       panel.appendChild(hint);
       body.appendChild(panel);
-      renderDetailChart(id, chart, meta, hint);
+      renderDetailChart(id, chart, meta, hint, extra);
     });
   }
 
@@ -1920,11 +1948,13 @@
     return group;
   }
 
-  function renderDetailChart(id, el, meta, hint) {
+  function renderDetailChart(id, el, meta, hint, extra) {
     if (id === "heatmap") return renderDetailHeatmap(el, meta, hint);
     if (id === "region") return renderDetailRegion(el, meta, hint);
     if (id === "school") return renderDetailSchool(el, meta, hint);
     if (id === "trend") return renderDetailTrend(el, meta, hint);
+    if (id === "sankey") return renderDetailSankey(el, meta, hint, extra);
+    if (id === "scatter") return renderDetailScatter(el, meta, hint, extra);
   }
 
   function renderDetailHeatmap(el, meta, hint) {
@@ -2051,6 +2081,356 @@
     hint.textContent = "排名数据来自软科；年份为 2021-2026";
   }
 
+  // ------------------------------------------------------------------ 专业流向（桑基）
+  var sankeyState = { level: "province", province: "", school: "", target: "", expandedSources: [], expandedTargets: [] };
+  var sankeyModal = { side: null, items: [], offset: 0 };
+
+  function resetSankeyState() {
+    sankeyState = { level: "province", province: "", school: "", target: "", expandedSources: [], expandedTargets: [] };
+  }
+
+  function sankeyParams() {
+    var params = { level: sankeyState.level, year: detailState.year };
+    if (sankeyState.target) params.target = sankeyState.target;
+    if (sankeyState.level === "university") params.province = sankeyState.province;
+    if (sankeyState.level === "major") params.school = sankeyState.school;
+    return params;
+  }
+
+  function sankeyCrumb(meta) {
+    var parts = [];
+    parts.push('<span class="crumb" data-crumb="root">全国</span>');
+    if (sankeyState.level === "university") {
+      parts.push('<span class="crumb" data-crumb="province">' + sankeyState.province + '</span>');
+    }
+    if (sankeyState.level === "major") {
+      parts.push('<span class="crumb" data-crumb="province">' + sankeyState.province + '</span>');
+      parts.push(sankeyState.school);
+    }
+    if (sankeyState.target) {
+      parts.push('招生：' + sankeyState.target + ' <span class="crumb" data-crumb="target">×</span>');
+    }
+    meta.innerHTML = parts.join(' &gt; ');
+    meta.querySelectorAll('[data-crumb]').forEach(function (node) {
+      node.addEventListener('click', function () {
+        var action = node.getAttribute('data-crumb');
+        if (action === 'root') resetSankeyState();
+        else if (action === 'province') {
+          sankeyState.level = 'province';
+          sankeyState.province = '';
+          sankeyState.school = '';
+          sankeyState.target = '';
+        } else if (action === 'target') {
+          sankeyState.target = '';
+        }
+        renderDetailGroup(currentDetailGroup());
+      });
+    });
+  }
+
+  function buildSankeyGraph(links, state) {
+    var sourceTotals = {};
+    var targetTotals = {};
+    links.forEach(function (l) {
+      sourceTotals[l.source] = (sourceTotals[l.source] || 0) + l.value;
+      targetTotals[l.target] = (targetTotals[l.target] || 0) + l.value;
+    });
+    var topSources = Object.keys(sourceTotals).sort(function (a, b) { return sourceTotals[b] - sourceTotals[a]; }).slice(0, 8);
+    var topTargets = Object.keys(targetTotals).sort(function (a, b) { return targetTotals[b] - targetTotals[a]; }).slice(0, 8);
+    var visibleS = {};
+    var visibleT = {};
+    topSources.forEach(function (s) { visibleS[s] = true; });
+    topTargets.forEach(function (t) { visibleT[t] = true; });
+    state.expandedSources.forEach(function (s) { visibleS[s] = true; });
+    state.expandedTargets.forEach(function (t) { visibleT[t] = true; });
+
+    var kept = [];
+    var hiddenSource = {};
+    var hiddenTarget = {};
+    var otherOther = 0;
+    links.forEach(function (l) {
+      var s = !!visibleS[l.source];
+      var t = !!visibleT[l.target];
+      if (s && t) kept.push(l);
+      else if (!s && t) {
+        hiddenSource[l.source] = (hiddenSource[l.source] || 0) + l.value;
+        kept.push({ source: '__otherS__', target: l.target, value: l.value });
+      } else if (s && !t) {
+        hiddenTarget[l.target] = (hiddenTarget[l.target] || 0) + l.value;
+        kept.push({ source: l.source, target: '__otherT__', value: l.value });
+      } else {
+        hiddenSource[l.source] = (hiddenSource[l.source] || 0) + l.value;
+        hiddenTarget[l.target] = (hiddenTarget[l.target] || 0) + l.value;
+        otherOther += l.value;
+      }
+    });
+    if (otherOther) kept.push({ source: '__otherS__', target: '__otherT__', value: otherOther });
+
+    var nodes = [];
+    var sourceNames = Object.keys(visibleS);
+    var targetNames = Object.keys(visibleT);
+    sourceNames.forEach(function (name) {
+      nodes.push({ name: 's:' + name, label: name, labelPos: 'right' });
+    });
+    targetNames.forEach(function (name) {
+      nodes.push({ name: 't:' + name, label: name, labelPos: 'left' });
+    });
+    if (Object.keys(hiddenSource).length) nodes.push({ name: 's:__otherS__', label: '其他生源省', labelPos: 'right' });
+    if (Object.keys(hiddenTarget).length) nodes.push({ name: 't:__otherT__', label: '其他招生省', labelPos: 'left' });
+
+    var graphLinks = kept.map(function (l) {
+      return {
+        source: l.source === '__otherS__' ? 's:__otherS__' : 's:' + l.source,
+        target: l.target === '__otherT__' ? 't:__otherT__' : 't:' + l.target,
+        value: l.value
+      };
+    });
+    return {
+      nodes: nodes,
+      links: graphLinks,
+      hiddenSource: hiddenSource,
+      hiddenTarget: hiddenTarget
+    };
+  }
+
+  function renderDetailSankey(el, meta, hint, extra) {
+    el.innerHTML = '<div class="empty-tip">加载中…</div>';
+    extra.innerHTML = '';
+    sankeyCrumb(meta);
+    fetchJSON('/api/sankey', sankeyParams()).then(function (data) {
+      el.innerHTML = '';
+      if (!data.links || !data.links.length) {
+        el.innerHTML = '<div class="empty-tip">当前层级暂无招生流向</div>';
+        hint.textContent = '可返回上一级或调整年份';
+        return;
+      }
+      var graph = buildSankeyGraph(data.links, sankeyState);
+      var C = chartTheme();
+      var chart = echarts.init(el, null, { renderer: 'canvas' });
+      detailChartInstances[idKey(el)] = chart;
+      var palette = ['#2dd4bf', '#5ea0ff', '#c084fc', '#f472b6', '#f59e0b', '#34d399', '#60a5fa', '#a78bfa', '#fb7185', '#fbbf24'];
+      var nodes = graph.nodes.map(function (node, index) {
+        return {
+          name: node.name,
+          label: {
+            position: node.labelPos === 'left' ? 'left' : 'right',
+            distance: 6
+          },
+          itemStyle: { color: palette[index % palette.length] }
+        };
+      });
+      chart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: C.tooltipBg,
+          borderColor: C.tooltipBorder,
+          textStyle: { color: C.tooltipText, fontSize: 12 },
+          formatter: function (p) {
+            if (p.dataType === 'edge') {
+              var s = String(p.data.source).replace(/^s:/, '').replace('__otherS__', '其他生源省');
+              var t = String(p.data.target).replace(/^t:/, '').replace('__otherT__', '其他招生省');
+              return s + ' → ' + t + '<br/>招生 ' + p.data.value + ' 人';
+            }
+            return (p.name || '').replace(/^[st]:/, '');
+          }
+        },
+        series: [{
+          type: 'sankey',
+          left: 24, right: 86, top: 16, bottom: 16,
+          nodeWidth: 12,
+          nodeGap: 10,
+          layoutIterations: 32,
+          data: nodes,
+          links: graph.links,
+          label: {
+            color: C.axisLabel,
+            fontSize: 10,
+            formatter: function (p) {
+              return p.name.replace(/^[st]:/, '').replace('__otherS__', '其他生源省').replace('__otherT__', '其他招生省');
+            }
+          },
+          lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.42 },
+          emphasis: { focus: 'adjacency', lineStyle: { opacity: 0.65 } },
+          itemStyle: { borderWidth: 0 }
+        }]
+      }, true);
+
+      chart.on('click', function (p) {
+        var raw = String(p.name || '');
+        var label = raw.replace(/^[st]:/, '');
+        if (label === '__otherS__' || label === '其他生源省') {
+          openSankeyModal('source', graph.hiddenSource);
+          return;
+        }
+        if (label === '__otherT__' || label === '其他招生省') {
+          openSankeyModal('target', graph.hiddenTarget);
+          return;
+        }
+        if (raw.indexOf('s:') === 0) {
+          if (sankeyState.level === 'province') {
+            sankeyState.level = 'university';
+            sankeyState.province = label;
+            sankeyState.school = '';
+          } else if (sankeyState.level === 'university') {
+            sankeyState.level = 'major';
+            sankeyState.school = label;
+          }
+          sankeyState.target = '';
+        } else {
+          sankeyState.target = sankeyState.target === label ? '' : label;
+        }
+        renderDetailGroup(currentDetailGroup());
+      });
+
+      chart.on('dblclick', function (p) {
+        var raw = String(p.name || '');
+        if (raw.indexOf('t:') === 0) {
+          openSankeySchoolList(raw.replace(/^t:/, ''));
+        }
+      });
+
+      var levelText = { province: '学校所在省 → 招生省份', university: '大学 → 招生省份', major: '专业大类 → 招生省份' }[sankeyState.level];
+      hint.textContent = levelText + '；点击左端下钻，单击右端过滤，双击右端看院校';
+      if (graph.hiddenSource && Object.keys(graph.hiddenSource).length) {
+        extra.innerHTML = '<div class="scatter-list-item" style="cursor:default"><span>其他生源省：' +
+          Object.keys(graph.hiddenSource).length + ' 个省份已折叠</span><span class="num">点击节点展开</span></div>';
+      }
+    }).catch(function (err) {
+      el.innerHTML = '<div class="empty-tip">' + err.message + '</div>';
+    });
+  }
+
+  function openSankeyModal(side, hiddenMap) {
+    var items = Object.keys(hiddenMap || {}).map(function (name) {
+      return { name: name, value: hiddenMap[name] };
+    }).sort(function (a, b) { return b.value - a.value; });
+    sankeyModal = { side: side, items: items, offset: 0 };
+    $('sankeyModalTitle').textContent = (side === 'source' ? '其他生源省' : '其他招生省') + '（' + items.length + '）';
+    renderSankeyModal();
+    $('sankeyModal').classList.add('show');
+  }
+
+  function renderSankeyModal() {
+    var body = $('sankeyModalBody');
+    body.innerHTML = sankeyModal.items.map(function (item) {
+      return '<div class="modal-row"><span>' + item.name + '</span><span class="num">' + item.value + ' 人</span></div>';
+    }).join('');
+    $('sankeyExpandBtn').style.display = sankeyModal.items.length > sankeyModal.offset ? '' : 'none';
+  }
+
+  function expandSankeyModal() {
+    var batch = sankeyModal.items.slice(sankeyModal.offset, sankeyModal.offset + 6).map(function (item) { return item.name; });
+    if (sankeyModal.side === 'source') {
+      sankeyState.expandedSources = sankeyState.expandedSources.concat(batch);
+    } else {
+      sankeyState.expandedTargets = sankeyState.expandedTargets.concat(batch);
+    }
+    sankeyModal.offset += batch.length;
+    $('sankeyModal').classList.remove('show');
+    renderDetailGroup(currentDetailGroup());
+  }
+
+  function openSankeySchoolList(province) {
+    fetchJSON('/api/sankey', { level: 'university', year: detailState.year, target: province }).then(function (data) {
+      var schools = {};
+      (data.links || []).forEach(function (link) {
+        schools[link.source] = (schools[link.source] || 0) + link.value;
+      });
+      var items = Object.keys(schools).map(function (name) { return { name: name, value: schools[name] }; })
+        .sort(function (a, b) { return b.value - a.value; });
+      sankeyModal = { side: null, items: items, offset: 0 };
+      $('sankeyModalTitle').textContent = province + ' 招生院校（' + items.length + '）';
+      $('sankeyModalBody').innerHTML = items.map(function (item) {
+        return '<div class="modal-row"><span>' + item.name + '</span><span class="num">' + item.value + ' 人</span></div>';
+      }).join('');
+      $('sankeyExpandBtn').style.display = 'none';
+      $('sankeyModal').classList.add('show');
+    }).catch(function (err) {
+      showError('院校列表加载失败：' + err.message);
+    });
+  }
+
+  // ------------------------------------------------------------------ 科研/人才散点
+  function renderDetailScatter(el, meta, hint, extra) {
+    el.innerHTML = '<div class="empty-tip">加载中…</div>';
+    extra.innerHTML = '';
+    fetchJSON('/api/correlation', { year: detailState.year }).then(function (rows) {
+      el.innerHTML = '';
+      if (!rows || !rows.length) {
+        el.innerHTML = '<div class="empty-tip">该年份暂无科研/人才得分</div>';
+        return;
+      }
+      var C = chartTheme();
+      var chart = echarts.init(el, null, { renderer: 'canvas' });
+      detailChartInstances[idKey(el)] = chart;
+      var points = rows.map(function (row) {
+        return { name: row.name, value: [row.research, row.talent] };
+      });
+      chart.setOption({
+        backgroundColor: 'transparent',
+        grid: { left: 58, right: 24, top: 38, bottom: 54 },
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: C.tooltipBg, borderColor: C.tooltipBorder,
+          textStyle: { color: C.tooltipText, fontSize: 12 },
+          formatter: function (p) {
+            return '<b>' + p.name + '</b><br/>科研 ' + p.value[0] + '<br/>人才培养 ' + p.value[1];
+          }
+        },
+        toolbox: { right: 4, top: 0, iconStyle: { borderColor: C.toolbox },
+          feature: { brush: { type: ['rect', 'clear'], title: { rect: '框选', clear: '清除' } } } },
+        brush: { xAxisIndex: 0, yAxisIndex: 0, brushMode: 'single', throttleType: 'debounce', throttleDelay: 300, outOfBrush: { colorAlpha: 0.25 } },
+        xAxis: { type: 'value', name: '科研', nameLocation: 'end', nameGap: 8, nameTextStyle: { color: C.axisLabel, fontSize: 10 },
+          axisLabel: { color: C.axisLabel, fontSize: 10 }, splitLine: { lineStyle: { color: C.splitLine, type: 'dashed' } } },
+        yAxis: { type: 'value', name: '人才培养', nameLocation: 'end', nameGap: 10, nameTextStyle: { color: C.axisLabel, fontSize: 10 },
+          axisLabel: { color: C.axisLabel, fontSize: 10 }, splitLine: { lineStyle: { color: C.splitLine, type: 'dashed' } } },
+        series: [{
+          type: 'scatter', data: points, symbolSize: 8,
+          itemStyle: { color: C.lineMain, opacity: 0.8 },
+          emphasis: { itemStyle: { color: C.lineScore, shadowBlur: 10 } }
+        }]
+      }, true);
+
+      function showSelection(indexes) {
+        extra.innerHTML = '';
+        if (!indexes.length) return;
+        var selected = indexes.map(function (i) { return points[i]; }).filter(Boolean).slice(0, 12);
+        selected.forEach(function (point) {
+          var row = document.createElement('div');
+          row.className = 'scatter-list-item';
+          row.innerHTML = '<span>' + point.name + '</span><span class="num">科研 ' +
+            point.value[0] + ' / 人才 ' + point.value[1] + '</span>';
+          row.addEventListener('click', function () {
+            detailState.school = point.name;
+            markOtherTabsDirty();
+            renderDetailGroup(currentDetailGroup());
+          });
+          extra.appendChild(row);
+        });
+        setTimeout(function () { chart.resize(); }, 30);
+      }
+
+      chart.on('brushSelected', function (params) {
+        var batch = params.batch && params.batch[0];
+        var selected = batch && batch.selected && batch.selected[0];
+        showSelection((selected && selected.dataIndex) || []);
+      });
+      chart.on('click', function (p) {
+        detailState.school = p.name;
+        markOtherTabsDirty();
+        renderDetailGroup(currentDetailGroup());
+      });
+      setTimeout(function () {
+        chart.dispatchAction({ type: 'takeGlobalCursor', key: 'brush', brushOption: { brushType: 'rect' } });
+      }, 100);
+      meta.textContent = (detailState.year || '全部') + ' 年 · ' + rows.length + ' 所（前 100 名）';
+      hint.textContent = '框选散点 → 下方列表；点击学校联动趋势/专业';
+    }).catch(function (err) {
+      el.innerHTML = '<div class="empty-tip">' + err.message + '</div>';
+    });
+  }
+
   function idKey(el) {
     if (!el.__detailKey) el.__detailKey = "dp-" + Math.random().toString(36).slice(2);
     return el.__detailKey;
@@ -2156,6 +2536,10 @@
       if (retryAction) retryAction();
     });
 
+    $("sankeyModalClose").addEventListener("click", function () {
+      $("sankeyModal").classList.remove("show");
+    });
+    $("sankeyExpandBtn").addEventListener("click", expandSankeyModal);
     $("detailBtn").addEventListener("click", openDetail);
     $("detailBack").addEventListener("click", closeDetail);
     $("dApply").addEventListener("click", applyDetailFilters);
