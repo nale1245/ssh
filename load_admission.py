@@ -165,22 +165,34 @@ def ensure_university(conn, name: str, province: str, type_: str, level: str,
     return int(cur.lastrowid)
 
 
-def load_to_mysql(df: pd.DataFrame, database: str, replace_year: int | None = None) -> dict:
+def load_to_mysql(df: pd.DataFrame, database: str, replace_year: int | None = None,
+                  overlay: bool = False, table: str = "admission") -> dict:
+    if table not in ("admission", "admission_cross"):
+        raise ValueError("非法表名")
     conn = connect()
     try:
         with conn.cursor() as cur:
             cur.execute("USE `%s`" % database)
-            if replace_year is None:
-                cur.execute("DELETE FROM admission")
+            cur.execute("CREATE TABLE IF NOT EXISTS `%s` LIKE admission" % table)
+            if overlay:
+                keys = list({(int(r.year), r.province)
+                             for r in df.itertuples(index=False)})
+                for start in range(0, len(keys), 200):
+                    chunk = keys[start:start + 200]
+                    clause = " OR ".join(["(year=%s AND province=%s)"] * len(chunk))
+                    flat = [value for key in chunk for value in key]
+                    cur.execute("DELETE FROM `%s` WHERE " % table + clause, flat)
+            elif replace_year is None:
+                cur.execute("DELETE FROM `%s`" % table)
             else:
-                cur.execute("DELETE FROM admission WHERE year = %s", (replace_year,))
-            cur.execute("ALTER TABLE admission AUTO_INCREMENT = 1")
+                cur.execute("DELETE FROM `%s` WHERE year = %%s" % table, (replace_year,))
+            cur.execute("ALTER TABLE `%s` AUTO_INCREMENT = 1" % table)
             records = [
                 (int(r.univ_id), int(r.year), r.province, r.major, int(r.count))
                 for r in df.itertuples(index=False)
             ]
             cur.executemany(
-                "INSERT INTO admission (univ_id, year, province, major, `count`) "
+                "INSERT INTO `%s` (univ_id, year, province, major, `count`) " % table +
                 "VALUES (%s, %s, %s, %s, %s)",
                 records,
             )
@@ -247,6 +259,10 @@ def main(argv=None) -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--replace-year", type=int, default=None,
                         help="只替换指定年份的招生数据（其余年份保留）")
+    parser.add_argument("--overlay", action="store_true",
+                        help="只覆盖输入数据中出现的 (年份, 省份)，其余保留")
+    parser.add_argument("--table", default="admission", choices=["admission", "admission_cross"],
+                        help="写入的目标表；桑基图使用 admission_cross")
     args = parser.parse_args(argv)
 
     paths = [Path(item.strip()) for item in args.csv.split(",") if item.strip()]
@@ -314,7 +330,7 @@ def main(argv=None) -> int:
         return 0
 
     try:
-        stats = load_to_mysql(df, args.database, args.replace_year)
+        stats = load_to_mysql(df, args.database, args.replace_year, overlay=args.overlay, table=args.table)
     except pymysql.MySQLError as exc:
         log("❌ 入库失败：%s" % exc)
         return 4

@@ -510,6 +510,17 @@ def major_category_map() -> dict[str, str]:
     return _major_category_cache
 
 
+def sankey_table(year):
+    """跨省采集表优先；没有该年份时回退到 admission。"""
+    if year is not None:
+        try:
+            if query_all("SELECT 1 FROM admission_cross WHERE year = %s LIMIT 1", (year,)):
+                return "admission_cross"
+        except pymysql.MySQLError:
+            pass
+    return "admission"
+
+
 @app.get("/api/sankey")
 def api_sankey():
     """
@@ -557,8 +568,9 @@ def api_sankey():
         select = "a.major AS src, a.province AS dst, SUM(a.`count`) AS value"
         group = "a.major, a.province"
 
+    table = sankey_table(year)
     sql = (
-        "SELECT " + select + " FROM admission a "
+        "SELECT " + select + " FROM `%s` a " % table +
         "JOIN university u ON u.id = a.univ_id "
         "WHERE " + " AND ".join(where) + " "
         "GROUP BY " + group
