@@ -24,3 +24,26 @@ Thumbs.db
 
 # 临时探测脚本
 _probe/
+
+# ===== 以下为本机无用内容，不提交 GitHub =====
+# IDE 技能目录
+.trae/
+
+# 项目文档与截图（本地保留，不入库）
+docs/
+全国大学数据分析大屏_项目设计文档v2.md
+给DSH的分阶段执行指令.md
+
+# 临时脚本与日志
+py_err.txt
+py_out.txt
+temp_py_err.txt
+tmp_b1.py
+data/_smoke_cross.csv
+data/admission_cross_raw.csv.bak_dup
+
+# 数据库导出（本地分发用）
+university_export.sql
+
+# Office 临时文件
+~$*
